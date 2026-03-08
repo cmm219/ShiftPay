@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorageForm from '../hooks/useLocalStorageForm';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -246,10 +248,9 @@ function StepRolesHiring({ formData, updateField }) {
   );
 }
 
-function StepAccount({ formData, updateField }) {
-  const [confirmPassword, setConfirmPassword] = useState('');
+function StepAccount({ formData, updateField, password, setPassword, confirmPassword, setConfirmPassword }) {
   const passwordMismatch =
-    confirmPassword.length > 0 && formData.password !== confirmPassword;
+    confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
     <div className="animate-fade-in">
@@ -283,8 +284,8 @@ function StepAccount({ formData, updateField }) {
             type="password"
             className={inputBase}
             placeholder="Create a password"
-            value={formData.password}
-            onChange={(e) => updateField('password', e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
@@ -324,7 +325,7 @@ function StepAccount({ formData, updateField }) {
 // Validation
 // ---------------------------------------------------------------------------
 
-function validateStep(step, formData) {
+function validateStep(step, formData, { password, confirmPassword } = {}) {
   switch (step) {
     case 1:
       if (!formData.name.trim()) return 'Please enter the restaurant name.';
@@ -338,9 +339,11 @@ function validateStep(step, formData) {
       return null;
     case 3:
       if (!formData.email.trim()) return 'Please enter an email address.';
-      if (!formData.password.trim()) return 'Please create a password.';
-      if (formData.password.length < 6)
-        return 'Password must be at least 6 characters.';
+      if (password !== undefined) {
+        if (!password) return 'Please create a password.';
+        if (password.length < 6) return 'Password must be at least 6 characters.';
+        if (password !== confirmPassword) return 'Passwords do not match.';
+      }
       return null;
     default:
       return null;
@@ -353,6 +356,7 @@ function validateStep(step, formData) {
 
 export default function RestaurantSignup() {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, updateField, updateFields, clearForm, isLoaded] =
     useLocalStorageForm('shiftpay-restaurant-signup', {
       step: 1,
@@ -362,11 +366,13 @@ export default function RestaurantSignup() {
       employeeCount: '',
       rolesHiring: [],
       email: '',
-      password: '',
     });
 
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isLoaded) {
     return (
@@ -379,7 +385,7 @@ export default function RestaurantSignup() {
   const step = formData.step;
 
   const goNext = () => {
-    const err = validateStep(step, formData);
+    const err = validateStep(step, formData, { password, confirmPassword });
     if (err) {
       setError(err);
       return;
@@ -397,17 +403,81 @@ export default function RestaurantSignup() {
     }
   };
 
-  const handleComplete = () => {
-    const err = validateStep(step, formData);
+  const handleComplete = async () => {
+    const err = validateStep(step, formData, { password, confirmPassword });
     if (err) {
       setError(err);
       return;
     }
-    clearForm();
-    setShowToast(true);
-    setTimeout(() => {
-      navigate('/browse');
-    }, 1500);
+    setError('');
+    setSubmitting(true);
+
+    try {
+      // 1. Create auth account
+      const { data, error: authError } = await signUp({
+        email: formData.email,
+        password,
+        role: 'restaurant',
+        metadata: {},
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const userId = data.user?.id;
+      if (!userId) {
+        setError('Signup succeeded but no user ID was returned. Please try logging in.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!supabase) {
+        setError('Supabase is not configured. Add credentials to .env.local');
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Insert restaurant profile
+      const { error: restaurantError } = await supabase.from('restaurants').insert({
+        profile_id: userId,
+        name: formData.name,
+        type: formData.type,
+        city: formData.city,
+        employee_count: formData.employeeCount,
+      });
+
+      if (restaurantError) {
+        setError('Account created but restaurant save failed: ' + restaurantError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Insert roles hiring
+      if (formData.rolesHiring.length > 0) {
+        const roleRows = formData.rolesHiring.map((role) => ({
+          restaurant_id: userId,
+          role,
+        }));
+        const { error: rolesError } = await supabase.from('restaurant_roles_hiring').insert(roleRows);
+        if (rolesError) {
+          console.warn('Failed to save roles hiring:', rolesError.message);
+        }
+      }
+
+      // Success
+      clearForm();
+      setShowToast(true);
+      setTimeout(() => {
+        navigate('/dashboard/restaurant');
+      }, 1500);
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderStep = () => {
@@ -417,7 +487,7 @@ export default function RestaurantSignup() {
       case 2:
         return <StepRolesHiring formData={formData} updateField={updateField} />;
       case 3:
-        return <StepAccount formData={formData} updateField={updateField} />;
+        return <StepAccount formData={formData} updateField={updateField} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />;
       default:
         return null;
     }
@@ -469,9 +539,10 @@ export default function RestaurantSignup() {
               <button
                 type="button"
                 onClick={handleComplete}
-                className="bg-accent text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-accent-hover transition-colors cursor-pointer animate-pulse-glow"
+                disabled={submitting}
+                className={`bg-accent text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-accent-hover transition-colors cursor-pointer ${submitting ? 'opacity-60 cursor-not-allowed' : 'animate-pulse-glow'}`}
               >
-                Complete Signup
+                {submitting ? 'Creating Account...' : 'Complete Registration'}
               </button>
             )}
           </div>

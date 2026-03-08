@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLocalStorageForm from '../hooks/useLocalStorageForm';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -145,7 +147,10 @@ function ProgressBar({ currentStep }) {
 // Step Components
 // ---------------------------------------------------------------------------
 
-function StepBasics({ formData, updateField }) {
+function StepBasics({ formData, updateField, password, setPassword, confirmPassword, setConfirmPassword }) {
+  const passwordMismatch =
+    confirmPassword.length > 0 && password !== confirmPassword;
+
   return (
     <div className="space-y-5 animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">
@@ -189,6 +194,33 @@ function StepBasics({ formData, updateField }) {
           value={formData.phone}
           onChange={(e) => updateField('phone', e.target.value)}
         />
+      </div>
+
+      <div>
+        <Label htmlFor="password">Password</Label>
+        <input
+          id="password"
+          type="password"
+          className={inputBase}
+          placeholder="Create a password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <input
+          id="confirmPassword"
+          type="password"
+          className={`${inputBase} ${passwordMismatch ? 'border-danger' : ''}`}
+          placeholder="Confirm your password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+        {passwordMismatch && (
+          <p className="text-danger text-xs mt-1">Passwords do not match.</p>
+        )}
       </div>
 
       <div>
@@ -590,12 +622,17 @@ function SummaryRow({ label, value }) {
 // Validation
 // ---------------------------------------------------------------------------
 
-function validateStep(step, formData) {
+function validateStep(step, formData, { password, confirmPassword } = {}) {
   switch (step) {
     case 1:
       if (!formData.name.trim()) return 'Please enter your name.';
       if (!formData.email.trim()) return 'Please enter your email.';
       if (!formData.phone.trim()) return 'Please enter your phone number.';
+      if (password !== undefined) {
+        if (!password) return 'Please create a password.';
+        if (password.length < 6) return 'Password must be at least 6 characters.';
+        if (password !== confirmPassword) return 'Passwords do not match.';
+      }
       if (!formData.city) return 'Please select a city.';
       return null;
     case 2:
@@ -623,6 +660,7 @@ function validateStep(step, formData) {
 
 export default function WorkerSignup() {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, updateField, updateFields, clearForm, isLoaded] =
     useLocalStorageForm('shiftpay-worker-signup', {
       step: 1,
@@ -639,8 +677,11 @@ export default function WorkerSignup() {
       preferredRateMax: 30,
     });
 
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isLoaded) {
     return (
@@ -653,7 +694,7 @@ export default function WorkerSignup() {
   const step = formData.step;
 
   const goNext = () => {
-    const err = validateStep(step, formData);
+    const err = validateStep(step, formData, { password, confirmPassword });
     if (err) {
       setError(err);
       return;
@@ -671,23 +712,101 @@ export default function WorkerSignup() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     const err = validateStep(step, formData);
     if (err) {
       setError(err);
       return;
     }
-    clearForm();
-    setShowToast(true);
-    setTimeout(() => {
-      navigate('/browse');
-    }, 1500);
+    setError('');
+    setSubmitting(true);
+
+    try {
+      // 1. Create auth account
+      const { data, error: authError } = await signUp({
+        email: formData.email,
+        password,
+        role: 'worker',
+        metadata: {},
+      });
+
+      if (authError) {
+        setError(authError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      const userId = data.user?.id;
+      if (!userId) {
+        setError('Signup succeeded but no user ID was returned. Please try logging in.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!supabase) {
+        setError('Supabase is not configured. Add credentials to .env.local');
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Insert worker profile
+      const { error: workerError } = await supabase.from('workers').insert({
+        profile_id: userId,
+        name: formData.name,
+        city: formData.city,
+        experience_years: parseInt(formData.experienceYears) || 0,
+        preferred_rate_min: parseInt(formData.preferredRateMin) || 15,
+        preferred_rate_max: parseInt(formData.preferredRateMax) || 30,
+        bio: formData.bio || null,
+      });
+
+      if (workerError) {
+        setError('Account created but profile save failed: ' + workerError.message);
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Insert roles, certifications, availability in parallel
+      const inserts = [];
+
+      if (formData.roles.length > 0) {
+        const roleRows = formData.roles.map((role) => ({ worker_id: userId, role }));
+        inserts.push(supabase.from('worker_roles').insert(roleRows));
+      }
+
+      const activeCerts = formData.certifications.filter((c) => c.hasIt);
+      if (activeCerts.length > 0) {
+        const certRows = activeCerts.map((c) => ({ worker_id: userId, certification_type: c.type }));
+        inserts.push(supabase.from('worker_certifications').insert(certRows));
+      }
+
+      if (formData.availability.length > 0) {
+        const availRows = formData.availability.map((a) => ({ worker_id: userId, availability_type: a }));
+        inserts.push(supabase.from('worker_availability').insert(availRows));
+      }
+
+      const results = await Promise.all(inserts);
+      results.forEach((r) => {
+        if (r.error) console.warn('Insert warning:', r.error.message);
+      });
+
+      // Success
+      clearForm();
+      setShowToast(true);
+      setTimeout(() => {
+        navigate('/dashboard/worker');
+      }, 1500);
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderStep = () => {
     switch (step) {
       case 1:
-        return <StepBasics formData={formData} updateField={updateField} />;
+        return <StepBasics formData={formData} updateField={updateField} password={password} setPassword={setPassword} confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} />;
       case 2:
         return <StepRoles formData={formData} updateField={updateField} />;
       case 3:
@@ -749,9 +868,10 @@ export default function WorkerSignup() {
               <button
                 type="button"
                 onClick={handleComplete}
-                className="bg-accent text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-accent-hover transition-colors cursor-pointer animate-pulse-glow"
+                disabled={submitting}
+                className={`bg-accent text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-accent-hover transition-colors cursor-pointer ${submitting ? 'opacity-60 cursor-not-allowed' : 'animate-pulse-glow'}`}
               >
-                Complete Signup
+                {submitting ? 'Creating Account...' : 'Complete Signup'}
               </button>
             )}
           </div>

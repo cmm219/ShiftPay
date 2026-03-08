@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const TABS = [
   { id: 'worker', label: 'Worker' },
@@ -10,9 +11,50 @@ export default function Login() {
   const [activeTab, setActiveTab] = useState('worker');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const { user, profile, signIn } = useAuth();
+  const navigate = useNavigate();
+
+  // Once user and profile are loaded after sign-in, redirect by role
+  useEffect(() => {
+    if (user && profile?.role) {
+      const dest =
+        profile.role === 'restaurant'
+          ? '/dashboard/restaurant'
+          : '/dashboard/worker';
+      navigate(dest, { replace: true });
+    }
+  }, [user, profile, navigate]);
 
   const signupPath =
     activeTab === 'worker' ? '/worker/signup' : '/restaurant/signup';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error: signInError } = await signIn({ email, password });
+
+      if (signInError) {
+        setError(signInError.message || 'Invalid email or password.');
+      }
+      // On success, the useEffect above will handle navigation
+      // once AuthContext updates user/profile
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary px-4 font-body">
@@ -50,10 +92,7 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <form
-            onSubmit={(e) => e.preventDefault()}
-            className="mt-6 space-y-4"
-          >
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label
                 htmlFor="email"
@@ -94,11 +133,19 @@ export default function Login() {
               </span>
             </div>
 
+            {/* Error message */}
+            {error && (
+              <div className="rounded-lg bg-danger-soft px-4 py-2.5 text-sm text-danger">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full cursor-pointer rounded-lg bg-accent py-3 font-semibold text-black transition-all duration-200 hover:bg-accent-hover"
+              disabled={submitting}
+              className="w-full cursor-pointer rounded-lg bg-accent py-3 font-semibold text-black transition-all duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Sign In
+              {submitting ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
@@ -111,11 +158,6 @@ export default function Login() {
             >
               Sign up as a {activeTab === 'worker' ? 'Worker' : 'Restaurant'}
             </Link>
-          </p>
-
-          {/* Demo notice */}
-          <p className="mt-4 rounded-lg bg-accent-soft px-4 py-2.5 text-center text-xs text-text-muted">
-            This is a demo — no real authentication
           </p>
         </div>
       </div>
