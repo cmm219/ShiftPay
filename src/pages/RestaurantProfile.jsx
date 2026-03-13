@@ -1,11 +1,14 @@
 import { useParams, Link } from 'react-router-dom';
-import { restaurants } from '../data/restaurants';
+import { useRestaurant } from '../hooks/useData';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function RestaurantProfile() {
   const { id } = useParams();
-  const restaurant = restaurants.find((r) => r.id === Number(id));
+  const { restaurant, loading } = useRestaurant(id);
+
+  if (loading) return <LoadingSpinner message="Loading restaurant..." />;
 
   if (!restaurant) {
     return (

@@ -1,13 +1,17 @@
 import { useParams, Link } from 'react-router-dom';
-import { shifts } from '../data/shifts';
+import { useShift } from '../hooks/useData';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function ShiftDetail() {
   const { id } = useParams();
-  const shift = shifts.find(
-    (s) => s.id === Number(id) && s.isUrgent && s.status === 'open'
-  );
+  const { shift: rawShift, loading } = useShift(id);
+
+  if (loading) return <LoadingSpinner message="Loading shift..." />;
+
+  // Only show urgent open shifts
+  const shift = rawShift?.isUrgent && rawShift?.status === 'open' ? rawShift : null;
 
   if (!shift) {
     return (

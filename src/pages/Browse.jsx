@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { workers } from '../data/workers';
+import { useWorkers } from '../hooks/useData';
 import ProfileCard from '../components/ProfileCard';
 import FilterSidebar from '../components/FilterSidebar';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 // ----------------------------------------------------------------
 // Local filtering logic
@@ -21,6 +22,7 @@ const DEFAULT_FILTERS = {
 };
 
 export default function Browse() {
+  const { workers, loading } = useWorkers();
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -71,7 +73,7 @@ export default function Browse() {
 
       return true;
     });
-  }, [filters]);
+  }, [filters, workers]);
 
   const handleFilterChange = (next) => setFilters(next);
   const handleReset = () => setFilters({ ...DEFAULT_FILTERS });
@@ -86,6 +88,8 @@ export default function Browse() {
       embedded
     />
   );
+
+  if (loading) return <LoadingSpinner message="Loading workers..." />;
 
   return (
     <div className="min-h-screen bg-bg-primary font-body">

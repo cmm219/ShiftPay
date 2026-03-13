@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { workers } from '../data/workers';
+import { useWorkers } from '../hooks/useData';
 import Badge from '../components/Badge';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 // ----------------------------------------------------------------
 // Swipe directions & animation helpers
@@ -39,6 +40,7 @@ function StarRating({ rating }) {
 }
 
 export default function Swipe() {
+  const { workers, loading } = useWorkers();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [exitDirection, setExitDirection] = useState(null); // 'left' | 'right'
   const [isAnimating, setIsAnimating] = useState(false);
@@ -85,9 +87,6 @@ export default function Swipe() {
         handleInterested();
       } else if (e.key === ' ') {
         e.preventDefault();
-        // Navigate to profile — we can't use Link here, so we rely on the
-        // browser's navigation. React-Router doesn't expose imperative nav
-        // without useNavigate, but we already import what we need.
         if (current) {
           window.location.href = `/worker/${current.id}`;
         }
@@ -97,6 +96,9 @@ export default function Swipe() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [handlePass, handleInterested, current]);
+
+  // ---- Loading state (must be after all hooks) ----
+  if (loading) return <LoadingSpinner message="Loading workers..." />;
 
   // ---- Card transform for the exit animation ----
   const cardStyle = (() => {

@@ -1,11 +1,14 @@
 import { useParams, Link } from 'react-router-dom';
-import { workers } from '../data/workers';
+import { useWorker } from '../hooks/useData';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function WorkerProfile() {
   const { id } = useParams();
-  const worker = workers.find((w) => w.id === Number(id));
+  const { worker, loading } = useWorker(id);
+
+  if (loading) return <LoadingSpinner message="Loading profile..." />;
 
   if (!worker) {
     return (
