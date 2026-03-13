@@ -98,3 +98,47 @@ Technical and design decisions made during development, with rationale.
 **Decision**: Worker and restaurant photos use Unsplash URLs with `?w=400&h=400&fit=crop&crop=face` parameters.
 
 **Rationale**: No image pipeline needed for the MVP. Unsplash serves optimized images at the requested dimensions. When we add real user uploads, we'll use a service like Cloudinary or S3 + CloudFront with on-the-fly resizing. The `photoUrl` field in mock data is structured the same way a real image URL would be.
+
+---
+
+## D11: Supabase as Backend-as-a-Service
+
+**Decision**: Use Supabase for PostgreSQL database, authentication, Row Level Security, and file storage.
+
+**Rationale**: Supabase provides everything ShiftPay needs in one platform — relational database (PostgreSQL), email/password auth with role metadata, RLS for data security, and storage buckets for file uploads. The JS client library integrates cleanly with React. Free tier is generous enough for MVP/beta. Supabase Realtime can handle messaging later without a separate WebSocket server.
+
+**Rejected**: Firebase (NoSQL doesn't fit relational data model well — workers have many roles, certs, reviews), custom Node+PostgreSQL (too much infrastructure overhead for MVP stage).
+
+---
+
+## D12: Mock Data Fallback Pattern
+
+**Decision**: All data hooks try Supabase first, then fall back to mock data arrays if Supabase is unconfigured, returns empty results, or errors.
+
+**Rationale**: This makes the app work identically in three scenarios: (1) no Supabase credentials (dev without backend), (2) empty database (fresh Supabase project), (3) populated database (production). The mock data serves as both fallback and demo content. The `demo` branch preserves the mock-only version permanently. Pages never need to know the data source — the hooks abstract it completely.
+
+**Pattern**: `useQuery(queryFn, fallbackData, deps)` → returns `{ data, loading, error, fromMock }`.
+
+---
+
+## D13: Git Branch Strategy — Demo vs Master
+
+**Decision**: `demo` branch preserves the mock-data-only frontend. `master` has the real Supabase integration with mock fallback.
+
+**Rationale**: The demo branch lets us show the full app with realistic data to investors, partners, or potential users without needing a populated database or working auth. Master is the production branch where real backend work happens. Both branches render identically when the database is empty (thanks to D12).
+
+---
+
+## D14: Snake-to-Camel Transform Layer
+
+**Decision**: Database uses PostgreSQL snake_case conventions. Frontend uses JavaScript camelCase. A transform layer in `src/lib/api.js` converts between them.
+
+**Rationale**: PostgreSQL convention is snake_case (`profile_id`, `pay_min`, `rating_average`). JavaScript convention is camelCase (`profileId`, `payMin`, `ratingAverage`). Rather than forcing one convention everywhere, we convert at the boundary. The transform functions in `api.js` reshape Supabase responses to match the exact shape of the mock data — so pages that worked with mock data work with Supabase data with zero changes.
+
+---
+
+## D15: Auto-Create Profile via Database Trigger
+
+**Decision**: A PostgreSQL trigger automatically creates a `profiles` row when a new auth user signs up, using the role from `user.raw_user_meta_data`.
+
+**Rationale**: This ensures every authenticated user has a profile record, even if the signup page crashes after auth creation but before domain record insertion. The trigger runs inside the database transaction, making it atomic with the auth signup. The profile stores the user's role (worker/restaurant), which `ProtectedRoute` and `Navbar` use for routing decisions.

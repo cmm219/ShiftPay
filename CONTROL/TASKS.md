@@ -27,8 +27,16 @@
 - [x] Design database schema (13 tables, enums, RLS policies)
 - [x] Run migration 001 (initial schema) on Supabase
 - [x] Run migration 002 (anonymous read policies)
+- [x] Build Supabase client (src/lib/supabase.js)
 - [x] Build API layer (src/lib/api.js) with snake→camelCase transforms
 - [x] Build data hooks (src/hooks/useData.js) with mock fallback
+- [x] Build AuthContext (src/contexts/AuthContext.jsx) — signUp, signIn, signOut, profile fetch
+- [x] Build useAuth hook (src/hooks/useAuth.js)
+- [x] Build ProtectedRoute component (role-based dashboard guards)
+- [x] Wire Login page to Supabase Auth (real sign-in/sign-out)
+- [x] Wire Worker Signup to Supabase (creates auth user + workers + roles + certs + availability)
+- [x] Wire Restaurant Signup to Supabase (creates auth user + restaurants + hiring roles)
+- [x] Update Navbar with auth-aware UI (user menu, avatar, sign out)
 - [x] Update Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail to use Supabase
 - [x] Add LoadingSpinner component
 - [x] Create `demo` branch (mock-data-only for demos)
@@ -39,6 +47,8 @@
 
 ## Immediate Next
 
+- [ ] Test signup end-to-end (create first real user to verify full flow works)
+- [ ] Seed database with mock data (so browse/profiles show real DB data)
 - [ ] Fix "Post a Shift" nav link (currently points to non-existent `/post-shift`)
 - [ ] Add a 404 catch-all route
 - [ ] Add React error boundary wrapper
@@ -46,11 +56,9 @@
 
 ---
 
-## Backend Phase 3 — Write Operations
+## Backend Phase 3 — Remaining Write Operations
 
-- [ ] Wire signup forms to Supabase (create profile + worker/restaurant records)
-- [ ] Wire login form to Supabase Auth (real sign-in/sign-out)
-- [ ] Update dashboards to show current user's data (needs auth context)
+- [ ] Update dashboards to show current user's data (currently hardcoded mock)
 - [ ] Shift claiming (write to shifts table)
 - [ ] Post-shift reviews (write to reviews table)
 - [ ] Favorites/rebook (write operations)

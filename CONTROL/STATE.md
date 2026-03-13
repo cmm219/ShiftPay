@@ -13,9 +13,9 @@ Supabase backend connected. Read operations wired up with automatic mock data fa
 | Route | Page | Status |
 |-------|------|--------|
 | `/` | Landing | Complete |
-| `/login` | Login | Stub (no real auth) |
-| `/worker/signup` | Worker Signup | Complete (6 steps, localStorage) |
-| `/restaurant/signup` | Restaurant Signup | Complete (3 steps, localStorage) |
+| `/login` | Login | Supabase Auth (email/password, role toggle) |
+| `/worker/signup` | Worker Signup | Writes to Supabase (6 steps, localStorage + DB) |
+| `/restaurant/signup` | Restaurant Signup | Writes to Supabase (3 steps, localStorage + DB) |
 | `/browse` | Browse Workers | Supabase + mock fallback |
 | `/swipe` | Swipe View | Supabase + mock fallback |
 | `/worker/:id` | Worker Profile | Supabase + mock fallback |
@@ -24,17 +24,18 @@ Supabase backend connected. Read operations wired up with automatic mock data fa
 | `/dashboard/restaurant` | Restaurant Dashboard | Mock only (needs auth) |
 | `/jobs/:id` | Shift Detail | Supabase + mock fallback |
 
-## Components (7/7 built)
+## Components (8 built)
 
 | Component | Props | Notes |
 |-----------|-------|-------|
-| Navbar | — | Fixed top, mobile hamburger, ShiftPay logo |
+| Navbar | — | Fixed top, mobile hamburger, auth-aware (shows user menu when logged in) |
 | Button | variant, size | primary/secondary/ghost/danger |
 | Badge | type, value, certStatus | role/cert/status/availability |
 | ProfileCard | worker, onViewProfile | Browse grid card |
 | StatCard | icon, value, label | Dashboard stat tiles |
 | FilterSidebar | filters, onFilterChange, onReset, embedded | Browse filters, mobile drawer |
 | LoadingSpinner | message | Async loading state indicator |
+| ProtectedRoute | — | Guards dashboard routes, redirects to /login, enforces role-based access |
 
 ## Mock Data
 
@@ -51,6 +52,7 @@ Supabase backend connected. Read operations wired up with automatic mock data fa
 | `useLocalStorageForm` | `shiftpay-worker-signup` | Worker signup persistence |
 | `useLocalStorageForm` | `shiftpay-restaurant-signup` | Restaurant signup persistence |
 | `useFilters` | — | Browse page combinatorial filtering |
+| `useAuth` | — | Consumes AuthContext (user, profile, signIn, signUp, signOut) |
 | `useWorkers` | — | Fetch workers from Supabase (mock fallback) |
 | `useWorker(id)` | — | Fetch single worker by ID |
 | `useRestaurants` | — | Fetch restaurants from Supabase |
@@ -58,11 +60,25 @@ Supabase backend connected. Read operations wired up with automatic mock data fa
 | `useShifts` | — | Fetch shifts from Supabase |
 | `useShift(id)` | — | Fetch single shift by ID |
 
+## Auth System
+
+| File | Purpose |
+|------|---------|
+| `src/contexts/AuthContext.jsx` | AuthProvider with signUp, signIn, signOut, auto profile fetch |
+| `src/hooks/useAuth.js` | Context consumer hook |
+| `src/components/ProtectedRoute.jsx` | Route guard with role-based redirects |
+
+**Auth flow:**
+- Signup creates Supabase Auth user → DB trigger auto-creates `profiles` row → signup page inserts worker/restaurant record + related tables
+- Login authenticates → auto-fetches profile → redirects to role-appropriate dashboard
+- Navbar shows user menu (avatar, email, role, sign out) when authenticated
+- ProtectedRoute redirects unauthenticated users to `/login`, enforces worker vs restaurant access
+
 ## API Layer
 
 | File | Purpose |
 |------|---------|
-| `src/lib/supabase.js` | Supabase client init (env vars) |
+| `src/lib/supabase.js` | Supabase client init (env vars, returns null if unconfigured) |
 | `src/lib/api.js` | Query functions + snake→camelCase transforms |
 
 ## Supabase
@@ -98,7 +114,8 @@ Supabase backend connected. Read operations wired up with automatic mock data fa
 | Swipe + keyboard | Real | Left/right arrows, space to view profile |
 | Supabase connection | Real | Read queries with mock fallback |
 | Worker photos | External | Unsplash URLs, not user uploads |
-| Login/auth | Partial | Supabase Auth wired, UI stub |
+| Login/auth | Real | Supabase Auth (email/password), role-based routing, session persistence |
+| Signup → DB writes | Real | Worker + Restaurant signup write to Supabase tables |
 | Cert uploads | Mock | UI only, "File selected" text, no storage |
 | Chat messages | Mock | Static conversation data |
 | Ratings/reviews | Mock | Hardcoded in worker data |

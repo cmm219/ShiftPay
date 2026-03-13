@@ -100,7 +100,17 @@ Wired up Supabase backend for read operations. Created API layer, data hooks, an
 - Fixed migration ordering bug (`auth_role()` referenced `profiles` before creation)
 - Ran migration 002 (anonymous SELECT policies for public browsing)
 
+**Auth System**
+- `src/contexts/AuthContext.jsx` — Full auth state management (signUp, signIn, signOut, auto profile fetch)
+- `src/hooks/useAuth.js` — Context consumer hook
+- `src/components/ProtectedRoute.jsx` — Guards dashboard routes, enforces role-based access
+- Updated `Login.jsx` — Wired to Supabase Auth (real email/password sign-in)
+- Updated `WorkerSignup.jsx` — On completion: creates auth user → inserts worker + roles + certs + availability
+- Updated `RestaurantSignup.jsx` — On completion: creates auth user → inserts restaurant + hiring roles
+- Updated `Navbar.jsx` — Auth-aware: shows user menu with avatar, email, role, sign out when logged in
+
 **API Layer**
+- `src/lib/supabase.js` — Supabase client init (returns null if env vars missing)
 - `src/lib/api.js` — Query functions with Supabase nested selects
 - Transform layer: snake_case DB → camelCase frontend (matches mock data shape)
 - Functions: `fetchWorkers()`, `fetchWorkerById()`, `fetchRestaurants()`, `fetchRestaurantById()`, `fetchShifts()`, `fetchShiftById()`
@@ -110,7 +120,7 @@ Wired up Supabase backend for read operations. Created API layer, data hooks, an
 - Automatic mock data fallback when Supabase is unconfigured or empty
 - Exports: `useWorkers()`, `useWorker(id)`, `useRestaurants()`, `useRestaurant(id)`, `useShifts()`, `useShift(id)`
 
-**Page Updates**
+**Page Updates (Read Operations)**
 - Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail now use Supabase hooks
 - Added LoadingSpinner component for async states
 - Fixed React hooks violation in Swipe.jsx (loading check was between useState and useCallback)
@@ -125,18 +135,23 @@ Wired up Supabase backend for read operations. Created API layer, data hooks, an
 - Tests verify redirects, form inputs, filters, navigation, mobile viewports
 
 ### Files created/modified
-- New: `src/lib/api.js`, `src/hooks/useData.js`, `src/components/LoadingSpinner.jsx`
+- New: `src/contexts/AuthContext.jsx`, `src/hooks/useAuth.js`, `src/components/ProtectedRoute.jsx`
+- New: `src/lib/supabase.js`, `src/lib/api.js`, `src/hooks/useData.js`, `src/components/LoadingSpinner.jsx`
 - New: `supabase/migrations/002_anon_read_policies.sql`
 - New: `playwright.config.js`, 12 test files in `tests/`
-- Modified: 5 page files (Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail)
-- Modified: `package.json` (added @playwright/test)
+- Modified: `Login.jsx`, `WorkerSignup.jsx`, `RestaurantSignup.jsx`, `Navbar.jsx`, `App.jsx` (auth wiring)
+- Modified: `Browse.jsx`, `Swipe.jsx`, `WorkerProfile.jsx`, `RestaurantProfile.jsx`, `ShiftDetail.jsx` (Supabase hooks)
+- Modified: `package.json` (added @supabase/supabase-js, @playwright/test)
 
 ### Decisions made
 - D11: Supabase as BaaS (PostgreSQL, Auth, RLS, Storage, Realtime)
 - D12: Mock data fallback pattern (try Supabase first, fall back to mock if empty)
 - D13: Demo branch for mock-only demos, master for real backend
+- D14: Snake-to-camel transform layer at API boundary
+- D15: Auto-create profile via database trigger on auth signup
 
 ### Known issues at session end
-- Dashboards still use hardcoded mock data (need auth to show current user)
-- Database is empty — app runs entirely on mock fallback
-- Write operations not yet wired (signup, claiming, reviews)
+- Dashboards still use hardcoded mock data (need real users to show dynamic data)
+- Database is empty — no users have signed up yet, app runs on mock fallback
+- No signup has been tested end-to-end yet (first real user not created)
+- Remaining write operations: shift claiming, reviews, favorites
