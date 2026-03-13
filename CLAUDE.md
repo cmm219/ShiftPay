@@ -11,16 +11,6 @@ This file provides guidance to Claude Code when working in this project.
 
 ## Hard Rules
 - CONTROL/ is authoritative — overrides all other docs
-- NO refactors without explicit approval
-- NO silent edits — show diffs BEFORE changes
-- One feature at a time — complete and verify before moving on
-- No architecture changes without approval
-- **Always launch agents in parallel** when tasks are independent
-
-## Browser Automation
-- **Always use OpenChrome (`oc` tools / `mcp__openchrome__*`)** for all browser automation
-- NEVER use the built-in "Claude in Chrome" extension tools (`mcp__Claude_in_Chrome__*`)
-- OpenChrome supports parallel sessions — other terminals may be using the browser simultaneously
 
 ## Tech Stack
 - **Build**: Vite 7.3 | **Framework**: React 19 | **Styling**: Tailwind CSS 4
@@ -31,15 +21,6 @@ This file provides guidance to Claude Code when working in this project.
 
 ## Tailwind v4 — IMPORTANT
 Tailwind v4 does NOT use `tailwind.config.js`. All theme customization lives in `src/index.css` inside the `@theme { }` block. Colors are referenced as `bg-bg-primary`, `text-text-secondary`, `border-border-subtle`, etc.
-
-## Session Workflow
-Plan -> Review -> Confirm -> Implement -> Diff -> Log -> Commit
-
-## After Each Session
-1. Update CONTROL/STATE.md with current status
-2. Update CONTROL/TASKS.md with completed/new items
-3. Append session entry to CONTROL/LOG.md
-4. Commit with descriptive message
 
 ## Quick Reference
 - **Run**: `npm run dev` (localhost:3000)

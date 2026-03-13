@@ -25,12 +25,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Return the current user's role from profiles
-CREATE OR REPLACE FUNCTION auth_role()
-RETURNS user_role AS $$
-  SELECT role FROM profiles WHERE id = auth.uid()
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
-
 -- ────────────────────────────────────────────────────────────
 -- 3. TABLES
 -- ────────────────────────────────────────────────────────────
@@ -184,6 +178,16 @@ CREATE TABLE favorites (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (restaurant_id, worker_id)
 );
+
+-- ────────────────────────────────────────────────────────────
+-- 3b. HELPER FUNCTION (depends on profiles table)
+-- ────────────────────────────────────────────────────────────
+
+-- Return the current user's role from profiles
+CREATE OR REPLACE FUNCTION auth_role()
+RETURNS user_role AS $$
+  SELECT role FROM profiles WHERE id = auth.uid()
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- ────────────────────────────────────────────────────────────
 -- 4. UPDATED_AT TRIGGERS
