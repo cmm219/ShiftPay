@@ -1,12 +1,12 @@
 # ShiftPay — Current State
 
-**Last updated**: 2026-03-06
+**Last updated**: 2026-03-13
 
 ---
 
-## Build Status: MVP Complete
+## Build Status: Backend Phase 2 Complete
 
-The frontend MVP is fully built and running. No backend, no auth, no real data — all mock.
+Supabase backend connected. Read operations wired up with automatic mock data fallback. 115 Playwright e2e tests passing. Demo branch preserved with mock-only version.
 
 ## Pages (11/11 built)
 
@@ -16,15 +16,15 @@ The frontend MVP is fully built and running. No backend, no auth, no real data �
 | `/login` | Login | Stub (no real auth) |
 | `/worker/signup` | Worker Signup | Complete (6 steps, localStorage) |
 | `/restaurant/signup` | Restaurant Signup | Complete (3 steps, localStorage) |
-| `/browse` | Browse Workers | Complete (filters, grid) |
-| `/swipe` | Swipe View | Complete (keyboard nav, transitions) |
-| `/worker/:id` | Worker Profile | Complete (reviews, certs, demand) |
-| `/restaurant/:id` | Restaurant Profile | Complete (openings, apply) |
-| `/dashboard/worker` | Worker Dashboard | Complete (mock data for Jasmine Davis) |
-| `/dashboard/restaurant` | Restaurant Dashboard | Complete (mock data for Bern's) |
-| `/jobs/:id` | Shift Detail | Complete (countdown, claim button) |
+| `/browse` | Browse Workers | Supabase + mock fallback |
+| `/swipe` | Swipe View | Supabase + mock fallback |
+| `/worker/:id` | Worker Profile | Supabase + mock fallback |
+| `/restaurant/:id` | Restaurant Profile | Supabase + mock fallback |
+| `/dashboard/worker` | Worker Dashboard | Mock only (needs auth) |
+| `/dashboard/restaurant` | Restaurant Dashboard | Mock only (needs auth) |
+| `/jobs/:id` | Shift Detail | Supabase + mock fallback |
 
-## Components (6/6 built)
+## Components (7/7 built)
 
 | Component | Props | Notes |
 |-----------|-------|-------|
@@ -34,6 +34,7 @@ The frontend MVP is fully built and running. No backend, no auth, no real data �
 | ProfileCard | worker, onViewProfile | Browse grid card |
 | StatCard | icon, value, label | Dashboard stat tiles |
 | FilterSidebar | filters, onFilterChange, onReset, embedded | Browse filters, mobile drawer |
+| LoadingSpinner | message | Async loading state indicator |
 
 ## Mock Data
 
@@ -50,6 +51,42 @@ The frontend MVP is fully built and running. No backend, no auth, no real data �
 | `useLocalStorageForm` | `shiftpay-worker-signup` | Worker signup persistence |
 | `useLocalStorageForm` | `shiftpay-restaurant-signup` | Restaurant signup persistence |
 | `useFilters` | — | Browse page combinatorial filtering |
+| `useWorkers` | — | Fetch workers from Supabase (mock fallback) |
+| `useWorker(id)` | — | Fetch single worker by ID |
+| `useRestaurants` | — | Fetch restaurants from Supabase |
+| `useRestaurant(id)` | — | Fetch single restaurant by ID |
+| `useShifts` | — | Fetch shifts from Supabase |
+| `useShift(id)` | — | Fetch single shift by ID |
+
+## API Layer
+
+| File | Purpose |
+|------|---------|
+| `src/lib/supabase.js` | Supabase client init (env vars) |
+| `src/lib/api.js` | Query functions + snake→camelCase transforms |
+
+## Supabase
+
+| Item | Details |
+|------|---------|
+| Project | `shiftpay` on Supabase |
+| Migration 001 | 13 tables, enums, triggers, RLS, indexes, storage |
+| Migration 002 | Anonymous read policies for public browsing |
+| Auth | Supabase Auth (email/password, role-based) |
+| Database | Empty — app falls back to mock data automatically |
+
+## Testing
+
+| Framework | Tests | Status |
+|-----------|-------|--------|
+| Playwright | 115 e2e tests across 12 spec files | All passing |
+
+## Branches
+
+| Branch | Purpose |
+|--------|---------|
+| `master` | Backend integration (Supabase + mock fallback) |
+| `demo` | Mock-data-only version for demos |
 
 ## What's Real vs. Mock
 
@@ -59,8 +96,9 @@ The frontend MVP is fully built and running. No backend, no auth, no real data �
 | Signup form UX | Real | Multi-step, validation, back/forward, localStorage |
 | Filter/browse | Real | All filters work combinatorially |
 | Swipe + keyboard | Real | Left/right arrows, space to view profile |
+| Supabase connection | Real | Read queries with mock fallback |
 | Worker photos | External | Unsplash URLs, not user uploads |
-| Login/auth | Mock | Stub form, no real authentication |
+| Login/auth | Partial | Supabase Auth wired, UI stub |
 | Cert uploads | Mock | UI only, "File selected" text, no storage |
 | Chat messages | Mock | Static conversation data |
 | Ratings/reviews | Mock | Hardcoded in worker data |
@@ -76,7 +114,8 @@ The frontend MVP is fully built and running. No backend, no auth, no real data �
 1. **No 404 page** — Unknown routes show blank content area
 2. **"Post a Shift" nav link** goes to non-existent route
 3. **Images depend on Unsplash** — If Unsplash is down, photos break
-4. **No loading states** — Pages render instantly from mock data (will need skeletons with real API)
-5. **No error boundaries** — React errors crash the whole app
-6. **Accessibility** — Basic keyboard nav works, but no ARIA labels, skip links, or screen reader testing
-7. **SEO** — Client-side rendered, no meta tags, no SSR
+4. **No error boundaries** — React errors crash the whole app
+5. **Accessibility** — Basic keyboard nav works, but no ARIA labels, skip links, or screen reader testing
+6. **SEO** — Client-side rendered, no meta tags, no SSR
+7. **Dashboards still mock-only** — Need auth integration to show current user's data
+8. **Database empty** — No seed data in Supabase yet, app uses mock fallback

@@ -82,3 +82,61 @@ Built the entire ShiftPay MVP frontend from scratch in one session.
 - No 404 route
 - No error boundaries
 - Photos depend on Unsplash availability
+
+---
+
+## Session 2 — 2026-03-13
+
+### What happened
+
+Wired up Supabase backend for read operations. Created API layer, data hooks, and 115 Playwright tests.
+
+### Work performed
+
+**Supabase Setup**
+- Created Supabase project (`shiftpay`)
+- Configured `.env.local` with project URL and anon key
+- Ran migration 001 (13 tables, enums, triggers, RLS, indexes, storage buckets)
+- Fixed migration ordering bug (`auth_role()` referenced `profiles` before creation)
+- Ran migration 002 (anonymous SELECT policies for public browsing)
+
+**API Layer**
+- `src/lib/api.js` — Query functions with Supabase nested selects
+- Transform layer: snake_case DB → camelCase frontend (matches mock data shape)
+- Functions: `fetchWorkers()`, `fetchWorkerById()`, `fetchRestaurants()`, `fetchRestaurantById()`, `fetchShifts()`, `fetchShiftById()`
+
+**Data Hooks**
+- `src/hooks/useData.js` — Generic `useQuery()` hook with loading/error states
+- Automatic mock data fallback when Supabase is unconfigured or empty
+- Exports: `useWorkers()`, `useWorker(id)`, `useRestaurants()`, `useRestaurant(id)`, `useShifts()`, `useShift(id)`
+
+**Page Updates**
+- Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail now use Supabase hooks
+- Added LoadingSpinner component for async states
+- Fixed React hooks violation in Swipe.jsx (loading check was between useState and useCallback)
+
+**Git Strategy**
+- Created `demo` branch from master (preserves mock-data-only version)
+- Master branch continues with real backend integration
+
+**Playwright Testing**
+- 12 spec files, 115 tests total, all passing
+- Coverage: Landing, Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail, Login, WorkerSignup, RestaurantSignup, WorkerDashboard, RestaurantDashboard, Navigation
+- Tests verify redirects, form inputs, filters, navigation, mobile viewports
+
+### Files created/modified
+- New: `src/lib/api.js`, `src/hooks/useData.js`, `src/components/LoadingSpinner.jsx`
+- New: `supabase/migrations/002_anon_read_policies.sql`
+- New: `playwright.config.js`, 12 test files in `tests/`
+- Modified: 5 page files (Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail)
+- Modified: `package.json` (added @playwright/test)
+
+### Decisions made
+- D11: Supabase as BaaS (PostgreSQL, Auth, RLS, Storage, Realtime)
+- D12: Mock data fallback pattern (try Supabase first, fall back to mock if empty)
+- D13: Demo branch for mock-only demos, master for real backend
+
+### Known issues at session end
+- Dashboards still use hardcoded mock data (need auth to show current user)
+- Database is empty — app runs entirely on mock fallback
+- Write operations not yet wired (signup, claiming, reviews)

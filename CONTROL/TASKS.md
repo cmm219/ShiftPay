@@ -1,10 +1,10 @@
 # ShiftPay — Tasks
 
-**Last updated**: 2026-03-06
+**Last updated**: 2026-03-13
 
 ---
 
-## Completed (Session 1)
+## Completed (Session 1 — MVP Frontend)
 
 - [x] Scaffold Vite + React project
 - [x] Install Tailwind v4, React Router
@@ -21,9 +21,23 @@
 - [x] Create CONTROL docs
 - [x] Create AI skill file
 
+## Completed (Session 2 — Backend Integration)
+
+- [x] Decide backend: Supabase
+- [x] Design database schema (13 tables, enums, RLS policies)
+- [x] Run migration 001 (initial schema) on Supabase
+- [x] Run migration 002 (anonymous read policies)
+- [x] Build API layer (src/lib/api.js) with snake→camelCase transforms
+- [x] Build data hooks (src/hooks/useData.js) with mock fallback
+- [x] Update Browse, Swipe, WorkerProfile, RestaurantProfile, ShiftDetail to use Supabase
+- [x] Add LoadingSpinner component
+- [x] Create `demo` branch (mock-data-only for demos)
+- [x] Write 115 Playwright e2e tests (12 spec files, all passing)
+- [x] Set up Playwright config with auto dev server
+
 ---
 
-## Immediate Next (When Ready)
+## Immediate Next
 
 - [ ] Fix "Post a Shift" nav link (currently points to non-existent `/post-shift`)
 - [ ] Add a 404 catch-all route
@@ -32,10 +46,29 @@
 
 ---
 
-## Pre-Backend Polish
+## Backend Phase 3 — Write Operations
+
+- [ ] Wire signup forms to Supabase (create profile + worker/restaurant records)
+- [ ] Wire login form to Supabase Auth (real sign-in/sign-out)
+- [ ] Update dashboards to show current user's data (needs auth context)
+- [ ] Shift claiming (write to shifts table)
+- [ ] Post-shift reviews (write to reviews table)
+- [ ] Favorites/rebook (write operations)
+
+---
+
+## Backend Phase 4 — File Uploads
+
+- [ ] Profile photo uploads to Supabase Storage
+- [ ] Cert document uploads
+- [ ] Replace Unsplash URLs with uploaded photos
+
+---
+
+## Polish
 
 - [ ] Add page transition animations between routes
-- [ ] Add skeleton loading states (prep for API latency)
+- [ ] Add skeleton loading states
 - [ ] Mobile test pass — verify all pages on small screens
 - [ ] Add ARIA labels to interactive elements
 - [ ] Add meta tags / page titles per route
@@ -43,27 +76,12 @@
 
 ---
 
-## Backend Setup (Phase 1)
+## Deferred (Phase 5+)
 
-- [ ] Decide: Supabase vs Firebase vs custom Node+PostgreSQL
-- [ ] Design database schema from mock data models
-- [ ] Set up auth (email/password, role-based)
-- [ ] Build API endpoints for workers, restaurants, shifts
-- [ ] Replace mock data imports with API calls
-- [ ] Replace localStorage signup with real form submission
-- [ ] Set up file storage for cert and profile photo uploads
-- [ ] Deploy frontend (Vercel/Netlify)
-- [ ] Deploy backend
-
----
-
-## Deferred (Phase 2+)
-
-- [ ] Real-time messaging (WebSocket / Supabase Realtime)
-- [ ] Shift posting and claiming flow
-- [ ] Post-shift rating system
+- [ ] Real-time messaging (Supabase Realtime)
 - [ ] Push notifications
 - [ ] Stripe payments for restaurants
 - [ ] Admin dashboard for cert verification
 - [ ] AI matching engine
+- [ ] Deploy frontend (Vercel/Netlify)
 - [ ] Native mobile app
