@@ -1,6 +1,6 @@
 # ShiftPay — Tasks
 
-**Last updated**: 2026-03-13
+**Last updated**: 2026-03-24
 
 ---
 
@@ -45,7 +45,11 @@
 
 ---
 
-## Immediate Next
+## Active Tasks
+
+See [[2026-03-13-task-immediate-next]] for full task breakdown.
+
+### Immediate Next
 
 - [ ] Test signup end-to-end (create first real user to verify full flow works)
 - [ ] Seed database with mock data (so browse/profiles show real DB data)
@@ -54,26 +58,20 @@
 - [ ] Add React error boundary wrapper
 - [ ] Replace Unsplash photos with local fallbacks or a more reliable CDN
 
----
-
-## Backend Phase 3 — Remaining Write Operations
+### Backend Phase 3 — Remaining Write Operations
 
 - [ ] Update dashboards to show current user's data (currently hardcoded mock)
 - [ ] Shift claiming (write to shifts table)
 - [ ] Post-shift reviews (write to reviews table)
 - [ ] Favorites/rebook (write operations)
 
----
-
-## Backend Phase 4 — File Uploads
+### Backend Phase 4 — File Uploads
 
 - [ ] Profile photo uploads to Supabase Storage
 - [ ] Cert document uploads
 - [ ] Replace Unsplash URLs with uploaded photos
 
----
-
-## Polish
+### Polish
 
 - [ ] Add page transition animations between routes
 - [ ] Add skeleton loading states
@@ -82,9 +80,7 @@
 - [ ] Add meta tags / page titles per route
 - [ ] Add favicon (use existing ICON SHIFTPAY.jpg as source)
 
----
-
-## Deferred (Phase 5+)
+### Deferred (Phase 5+)
 
 - [ ] Real-time messaging (Supabase Realtime)
 - [ ] Push notifications
@@ -93,3 +89,31 @@
 - [ ] AI matching engine
 - [ ] Deploy frontend (Vercel/Netlify)
 - [ ] Native mobile app
+
+---
+
+## Decisions
+
+See vault notes for full decision history:
+- [[2026-03-06-decision-dark-theme-amber-accents]]
+- [[2026-03-06-decision-font-pairing]]
+- [[2026-03-06-decision-localstorage-over-auth]]
+- [[2026-03-06-decision-mock-data]]
+- [[2026-03-06-decision-tailwind-v4]]
+- [[2026-03-06-decision-restaurant-terminology]]
+- [[2026-03-06-decision-free-workers]]
+- [[2026-03-06-decision-florida-market]]
+- [[2026-03-06-decision-swipe-secondary]]
+- [[2026-03-06-decision-unsplash-images]]
+- [[2026-03-13-decision-supabase-backend]]
+- [[2026-03-13-decision-mock-fallback-pattern]]
+- [[2026-03-13-decision-git-branch-strategy]]
+- [[2026-03-13-decision-snake-camel-transform]]
+- [[2026-03-13-decision-auto-create-profile-trigger]]
+
+## Reference Docs
+
+- [[2026-03-06-reference-technical-context]]
+- [[2026-03-06-reference-execution-plan]]
+- [[2026-03-06-reference-owner-readme]]
+- [[2026-03-13-reference-supabase]]
