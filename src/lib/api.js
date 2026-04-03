@@ -8,8 +8,8 @@ function transformWorker(w) {
   return {
     id: w.id,
     name: w.name,
-    email: w.profiles?.email || null,
-    phone: w.profiles?.phone || null,
+    email: null, // gated behind shift completion
+    phone: null, // gated behind shift completion
     city: w.city,
     photoUrl: w.profiles?.photo_url || null,
     roles: w.worker_roles?.map((r) => r.role) || [],
@@ -85,7 +85,7 @@ function transformShift(s) {
 
 const WORKER_SELECT = `
   *,
-  profiles(email, phone, photo_url),
+  profiles(photo_url),
   worker_roles(role),
   worker_certifications(cert_type, status, expiry_date),
   worker_availability(tag),
@@ -185,4 +185,184 @@ export async function fetchShiftById(id) {
 
   if (error) return { data: null, error };
   return { data: transformShift(data), error: null };
+}
+
+export async function fetchOpenings() {
+  if (!supabase) return { data: [], error: null, fromMock: true };
+
+  const { data, error } = await supabase
+    .from('openings')
+    .select('*, restaurants(id, name, photo_url, city, rating_average, rating_count)')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [], error };
+  return { data: data.map(o => ({
+    id: o.id,
+    role: o.role,
+    payRange: o.pay_range,
+    urgency: o.urgency,
+    restaurantId: o.restaurants?.id,
+    restaurantName: o.restaurants?.name,
+    restaurantPhoto: o.restaurants?.photo_url,
+    restaurantCity: o.restaurants?.city,
+    restaurantRating: o.restaurants?.rating_average ? Number(o.restaurants.rating_average) : 0,
+    restaurantRatingCount: o.restaurants?.rating_count ?? 0,
+  })), error: null };
+}
+
+// ────────────────────────────────────────────────────────────
+// Write operations
+// ────────────────────────────────────────────────────────────
+
+export async function createShift({ role, date, startTime, endTime, payRate, city, description, isUrgent }) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('create_shift', {
+    p_role: role,
+    p_date: date,
+    p_start_time: startTime,
+    p_end_time: endTime,
+    p_pay_rate: payRate,
+    p_city: city,
+    p_description: description || null,
+    p_is_urgent: isUrgent || false,
+  });
+
+  if (error) return { data: null, error };
+  return { data: transformShift(data), error: null };
+}
+
+export async function claimShift(shiftId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('claim_shift', {
+    p_shift_id: shiftId,
+  });
+
+  if (error) return { data: null, error };
+  return { data: transformShift(data), error: null };
+}
+
+export async function getMyWorkerId() {
+  if (!supabase) return { data: null, error: null };
+
+  const { data, error } = await supabase.rpc('get_my_worker_id');
+  if (error) return { data: null, error };
+  return { data, error: null };
+}
+
+export async function getMyRestaurantId() {
+  if (!supabase) return { data: null, error: null };
+
+  const { data, error } = await supabase.rpc('get_my_restaurant_id');
+  if (error) return { data: null, error };
+  return { data, error: null };
+}
+
+export async function createReview({ shiftId, workerId, restaurantId, rating, comment, reviewerType }) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert({
+      shift_id: shiftId,
+      worker_id: workerId,
+      restaurant_id: restaurantId,
+      rating,
+      comment: comment || null,
+      reviewer_type: reviewerType,
+      date: new Date().toISOString().split('T')[0],
+    })
+    .select()
+    .single();
+
+  if (error) return { data: null, error };
+  return { data, error: null };
+}
+
+export async function fetchShiftReviews(shiftId) {
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, workers(name), restaurants(name)')
+    .eq('shift_id', shiftId);
+
+  if (error) return { data: [], error };
+  return { data, error: null };
+}
+
+export async function getShiftPostCount() {
+  if (!supabase) return { data: 0, error: null };
+
+  const restaurantId = await getMyRestaurantId();
+  if (!restaurantId.data) return { data: 0, error: null };
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const { count, error } = await supabase
+    .from('shifts')
+    .select('*', { count: 'exact', head: true })
+    .eq('restaurant_id', restaurantId.data)
+    .gte('created_at', startOfMonth.toISOString());
+
+  if (error) return { data: 0, error };
+  return { data: count || 0, error: null };
+}
+
+// ────────────────────────────────────────────────────────────
+// Payment queries
+// ────────────────────────────────────────────────────────────
+
+export async function fetchSubscription() {
+  if (!supabase) return { data: null, error: null };
+
+  const restaurantId = await getMyRestaurantId();
+  if (!restaurantId.data) return { data: null, error: null };
+
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('restaurant_id', restaurantId.data)
+    .single();
+
+  if (error && error.code !== 'PGRST116') return { data: null, error };
+  return {
+    data: data ? {
+      id: data.id,
+      plan: data.plan,
+      status: data.status,
+      currentPeriodEnd: data.current_period_end,
+    } : null,
+    error: null,
+  };
+}
+
+export async function fetchInvoices() {
+  if (!supabase) return { data: [], error: null };
+
+  const restaurantId = await getMyRestaurantId();
+  if (!restaurantId.data) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*, shifts(role, date)')
+    .eq('restaurant_id', restaurantId.data)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [], error };
+  return {
+    data: data.map(inv => ({
+      id: inv.id,
+      amount: inv.amount / 100,
+      status: inv.status,
+      createdAt: inv.created_at,
+      shiftRole: inv.shifts?.role,
+      shiftDate: inv.shifts?.date,
+    })),
+    error: null,
+  };
 }

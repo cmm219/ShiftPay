@@ -70,6 +70,24 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  const signInWithPhone = async (phone) => {
+    if (!supabase) return { data: null, error: { message: 'Supabase is not configured. Add credentials to .env.local' } }
+    const { data, error } = await supabase.auth.signInWithOtp({
+      phone,
+    })
+    return { data, error }
+  }
+
+  const verifyOtp = async (phone, token) => {
+    if (!supabase) return { data: null, error: { message: 'Supabase is not configured. Add credentials to .env.local' } }
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone,
+      token,
+      type: 'sms',
+    })
+    return { data, error }
+  }
+
   const signOut = async () => {
     if (!supabase) return { error: null }
     const { error } = await supabase.auth.signOut()
@@ -77,7 +95,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, signInWithPhone, verifyOtp }}>
       {children}
     </AuthContext.Provider>
   )

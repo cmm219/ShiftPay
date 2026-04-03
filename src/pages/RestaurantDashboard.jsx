@@ -1,221 +1,518 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { restaurants } from '../data/restaurants';
-import { workers } from '../data/workers';
+import { useAuth } from '../hooks/useAuth';
+import { useShifts, useRestaurants, useWorkers, useShiftPostCount } from '../hooks/useData';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-const restaurant = restaurants.find((r) => r.id === 1); // Bern's Steak House
+// ────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────
 
-const interestedWorkers = [
-  workers.find((w) => w.id === 1), // Marcus Johnson
-  workers.find((w) => w.id === 6), // Priya Patel
-  workers.find((w) => w.id === 3), // James Chen
-].filter(Boolean);
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
 
-const hiredWorkers = [
-  {
-    id: 8,
-    name: 'Jasmine Davis',
-    role: 'Bartender',
-    photoUrl: workers.find((w) => w.id === 8)?.photoUrl,
-    startDate: 'Feb 15, 2026',
-    status: 'active',
-  },
-  {
-    id: 5,
-    name: 'Diego Martinez',
-    role: 'Cook',
-    photoUrl: workers.find((w) => w.id === 5)?.photoUrl,
-    startDate: 'Mar 1, 2026',
-    status: 'active',
-  },
-  {
-    id: 2,
-    name: 'Sofia Reyes',
-    role: 'Bartender',
-    photoUrl: workers.find((w) => w.id === 2)?.photoUrl,
-    startDate: 'Jan 20, 2026',
-    status: 'active',
-  },
-];
+function isFuture(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return d >= today;
+}
+
+function isThisMonth(dateStr) {
+  const now = new Date();
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+
+function estimateHours(start, end) {
+  if (!start || !end) return 0;
+  const toMinutes = (t) => {
+    const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return 0;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const period = match[3].toUpperCase();
+    if (period === 'PM' && h !== 12) h += 12;
+    if (period === 'AM' && h === 12) h = 0;
+    return h * 60 + m;
+  };
+  let diff = toMinutes(end) - toMinutes(start);
+  if (diff <= 0) diff += 24 * 60;
+  return diff / 60;
+}
+
+const statusColors = {
+  completed: 'bg-success-soft text-success',
+  cancelled: 'bg-danger-soft text-danger',
+  open: 'bg-accent-soft text-accent',
+  claimed: 'bg-warning-soft text-warning',
+};
+
+const statusLabelsRestaurant = {
+  open: 'Posted, awaiting claims',
+  claimed: 'confirmed',
+  completed: 'Shift complete',
+};
+
+// ────────────────────────────────────────────────────────────
+// Sub-components
+// ────────────────────────────────────────────────────────────
+
+function OpenShiftCard({ shift }) {
+  return (
+    <div className="bg-bg-surface rounded-xl border border-border-subtle p-5 flex flex-col gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Badge type="role" value={shift.role} />
+        <div className="flex items-center gap-2">
+          {shift.isUrgent && (
+            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-warning-soft text-warning animate-pulse">
+              &#128293; Urgent
+            </span>
+          )}
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors.open}`}>
+            {statusLabelsRestaurant.open}
+          </span>
+        </div>
+      </div>
+      <div>
+        <p className="text-text-primary font-medium">
+          {formatDate(shift.date)}
+        </p>
+        <p className="text-text-secondary text-sm">
+          {shift.startTime} - {shift.endTime}
+        </p>
+      </div>
+      <p className="text-accent font-bold text-lg">${shift.payRate}/hr</p>
+      <Link to={`/jobs/${shift.id}`} className="mt-auto">
+        <Button variant="secondary" size="sm" className="w-full min-h-[44px]">
+          View Details
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+function ClaimedShiftCard({ shift, workerName, workerRating }) {
+  return (
+    <div className="bg-bg-surface rounded-xl border border-border-subtle p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="font-semibold text-text-primary">{workerName || 'Worker'}</span>
+          {workerRating > 0 && (
+            <span className="text-sm text-text-secondary">
+              {'\u2B50'} {workerRating.toFixed(1)}
+            </span>
+          )}
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors.claimed}`}>
+            {workerName} {statusLabelsRestaurant.claimed}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge type="role" value={shift.role} />
+          <span className="text-text-secondary text-sm">
+            {formatDate(shift.date)} &middot; {shift.startTime} - {shift.endTime}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-text-primary font-semibold text-sm">${shift.payRate}/hr</span>
+        <span className="rounded-full px-3 py-1 text-xs font-medium bg-accent-soft text-accent">
+          Awaiting completion
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function HistoryShiftCard({ shift, workerName }) {
+  return (
+    <div className="bg-bg-surface rounded-xl border border-border-subtle p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="font-semibold text-text-primary">{workerName || 'Worker'}</span>
+          <Badge type="role" value={shift.role} />
+        </div>
+        <p className="text-text-secondary text-sm">
+          {formatDate(shift.date)} &middot; {shift.startTime} - {shift.endTime}
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-text-primary font-semibold text-sm">${shift.payRate}/hr</span>
+        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors.completed}`}>
+          {statusLabelsRestaurant.completed}
+        </span>
+        {!shift.feedback && (
+          <Link
+            to={`/jobs/${shift.id}`}
+            className="text-accent text-sm font-medium hover:underline min-h-[44px] flex items-center"
+          >
+            Leave Review
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptySection({ icon, message, cta, to }) {
+  return (
+    <div className="text-center py-8">
+      <div className="text-3xl mb-3 opacity-50">{icon}</div>
+      <p className="text-text-muted text-sm mb-4">{message}</p>
+      {cta && to && (
+        <Link to={to}>
+          <Button variant="secondary" size="sm" className="min-h-[44px]">{cta}</Button>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function SubscriptionCard({ shiftPostCount }) {
+  const FREE_LIMIT = 3;
+  const remaining = Math.max(0, FREE_LIMIT - shiftPostCount);
+  const isFree = true; // No subscription system yet
+
+  return (
+    <div className="bg-bg-surface rounded-xl border border-border-subtle p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display text-lg font-semibold text-text-primary">Subscription</h3>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          isFree ? 'bg-bg-elevated text-text-secondary' : 'bg-accent-soft text-accent'
+        }`}>
+          {isFree ? 'Free Tier' : 'Pro'}
+        </span>
+      </div>
+      {isFree && (
+        <>
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-text-secondary">Posts this month</span>
+              <span className="text-text-primary font-medium">{shiftPostCount}/{FREE_LIMIT}</span>
+            </div>
+            <div className="w-full bg-bg-elevated rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-500"
+                style={{ width: `${Math.min(100, (shiftPostCount / FREE_LIMIT) * 100)}%` }}
+                role="progressbar"
+                aria-valuenow={shiftPostCount}
+                aria-valuemin={0}
+                aria-valuemax={FREE_LIMIT}
+                aria-label={`${shiftPostCount} of ${FREE_LIMIT} free posts used`}
+              />
+            </div>
+            <p className="text-text-muted text-xs mt-2">
+              {remaining > 0
+                ? `${remaining} free post${remaining !== 1 ? 's' : ''} remaining`
+                : 'Free posts used up this month'}
+            </p>
+          </div>
+          <div className="border-t border-border-subtle pt-4">
+            <p className="text-text-secondary text-sm mb-3">
+              Upgrade to Pro &mdash; unlimited posts, $15/fill instead of $30.
+            </p>
+            <Button variant="primary" size="sm" className="w-full min-h-[44px]" disabled>
+              Upgrade Coming Soon
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Main Component
+// ────────────────────────────────────────────────────────────
 
 export default function RestaurantDashboard() {
+  const { user, profile } = useAuth();
+  const { shifts, loading: shiftsLoading } = useShifts();
+  const { restaurants, loading: restaurantsLoading } = useRestaurants();
+  const { workers, loading: workersLoading } = useWorkers();
+  const { count: shiftPostCount } = useShiftPostCount();
+
+  // Find current restaurant
+  const currentRestaurant = useMemo(() => {
+    if (!user || !restaurants.length) return null;
+    return restaurants.find((r) => String(r.id) === String(profile?.restaurant_id)) ||
+           restaurants.find((r) => r.name && user.email) ||
+           // Fallback for mock data: use first restaurant
+           restaurants[0];
+  }, [user, profile, restaurants]);
+
+  // Build worker lookup
+  const workerMap = useMemo(() => {
+    const map = {};
+    workers.forEach((w) => { map[w.id] = w; });
+    return map;
+  }, [workers]);
+
+  // Filter shifts for current restaurant
+  const myShifts = useMemo(() => {
+    if (!currentRestaurant || !shifts.length) return [];
+    return shifts.filter((s) => s.restaurantId === currentRestaurant.id);
+  }, [currentRestaurant, shifts]);
+
+  // Split into categories
+  const { openShifts, claimedShifts, completedShifts } = useMemo(() => {
+    const open = myShifts
+      .filter((s) => s.status === 'open' && isFuture(s.date))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const claimed = myShifts
+      .filter((s) => s.status === 'claimed' && isFuture(s.date))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const completed = myShifts
+      .filter((s) => s.status === 'completed')
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return { openShifts: open, claimedShifts: claimed, completedShifts: completed };
+  }, [myShifts]);
+
+  // Monthly stats
+  const monthlyStats = useMemo(() => {
+    const monthShifts = myShifts.filter((s) => isThisMonth(s.date));
+    const fills = monthShifts.filter((s) => s.status === 'completed').length;
+    const totalSpend = monthShifts
+      .filter((s) => s.status === 'completed')
+      .reduce((sum, s) => {
+        const hours = estimateHours(s.startTime, s.endTime);
+        return sum + (s.payRate * hours);
+      }, 0);
+
+    return { fills, totalSpend };
+  }, [myShifts]);
+
+  const loading = shiftsLoading || restaurantsLoading || workersLoading;
+
+  if (loading) {
+    return <LoadingSpinner message="Loading your dashboard..." />;
+  }
+
+  // ── Empty state: no restaurant profile ──
+  if (!currentRestaurant) {
+    return (
+      <div className="min-h-screen bg-bg-primary font-body">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 py-16 text-center">
+          <div className="bg-bg-surface rounded-xl border border-border-subtle p-8 sm:p-12">
+            <div className="text-5xl mb-4">&#127869;</div>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary mb-3">
+              Welcome to ShiftPay!
+            </h1>
+            <p className="text-text-secondary mb-8 max-w-md mx-auto">
+              Post your first shift to connect with qualified workers in your area.
+            </p>
+            <Link to="/restaurant/signup">
+              <Button variant="primary" size="lg" className="min-h-[44px]">
+                Complete Your Profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const activeCount = openShifts.length + claimedShifts.length;
+
   return (
     <div className="min-h-screen bg-bg-primary font-body">
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-text-primary">
-              {restaurant.name}
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
+              {currentRestaurant.name}
             </h1>
-            <p className="text-text-secondary mt-1">Dashboard</p>
+            <p className="text-text-secondary mt-1">Restaurant Dashboard</p>
           </div>
-          <Link to={`/restaurant/${restaurant.id}`}>
-            <Button variant="secondary" size="sm">View Public Profile</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to={`/restaurant/${currentRestaurant.id}`}>
+              <Button variant="secondary" size="sm" className="min-h-[44px]">
+                View Public Profile
+              </Button>
+            </Link>
+            <Link to="/post-shift">
+              <Button variant="primary" size="sm" className="min-h-[44px]">
+                Post a Shift
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={'\uD83D\uDCCB'} value={2} label="Active Posts" />
-          <StatCard icon={'\u2728'} value={8} label="New Matches" />
-          <StatCard icon={'\u2705'} value={3} label="Hired This Month" />
-          <StatCard icon={'\uD83D\uDCAC'} value={5} label="Messages" />
-        </div>
-
-        {/* Active Job Posts */}
-        <section className="mb-8">
-          <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-            Active Job Posts
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {restaurant.openings.map((opening, idx) => (
-              <div
-                key={idx}
-                className="bg-bg-surface rounded-xl border border-border-subtle p-5 flex flex-col gap-3"
-              >
-                <div className="flex items-center justify-between">
-                  <Badge type="role" value={opening.role} />
-                  {opening.urgency === 'urgent' && (
-                    <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-warning-soft text-warning animate-pulse">
-                      {'\uD83D\uDD25'} Urgent
-                    </span>
-                  )}
-                </div>
-                <p className="text-text-primary text-lg font-medium">{opening.payRange}</p>
-                <p className="text-text-muted text-sm">
-                  {opening.urgency === 'urgent' ? '3 applicants' : '7 applicants'}
-                </p>
-                <div className="flex gap-2 mt-auto">
-                  <Button variant="secondary" size="sm" className="flex-1">
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" className="flex-1">
-                    Close
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* New Matches */}
-        <section className="mb-8">
-          <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-            New Matches
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {interestedWorkers.map((w) => (
-              <div
-                key={w.id}
-                className="bg-bg-surface rounded-xl border border-border-subtle p-5 flex flex-col items-center text-center gap-3"
-              >
-                <img
-                  src={w.photoUrl}
-                  alt={w.name}
-                  className="w-20 h-20 rounded-full object-cover"
-                />
+        {/* ── Hero: Active Shifts Summary ── */}
+        <section className="mb-8" aria-live="polite">
+          {activeCount > 0 ? (
+            <div className="bg-bg-surface rounded-xl border border-accent/30 p-6 sm:p-8 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-text-primary">{w.name}</p>
-                  <p className="text-text-muted text-sm">{w.city}</p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-1">
-                  {w.roles.map((role) => (
-                    <Badge key={role} type="role" value={role} />
-                  ))}
-                </div>
-                <div className="flex items-center gap-1 text-sm">
-                  <span>{'\u2B50'}</span>
-                  <span className="text-text-primary font-medium">{w.ratingAverage}</span>
-                  <span className="text-text-muted">({w.ratingCount})</span>
-                </div>
-                <div className="flex gap-2 w-full mt-auto">
-                  <Link to={`/worker/${w.id}`} className="flex-1">
-                    <Button variant="secondary" size="sm" className="w-full">
-                      View Profile
-                    </Button>
-                  </Link>
-                  <Button variant="primary" size="sm" className="flex-1">
-                    Message
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Hired Workers */}
-        <section className="mb-8">
-          <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-            Hired Workers
-          </h2>
-          <div className="flex flex-col gap-3">
-            {hiredWorkers.map((hw) => (
-              <div
-                key={hw.id}
-                className="bg-bg-surface rounded-xl border border-border-subtle p-4 flex items-center gap-4"
-              >
-                <img
-                  src={hw.photoUrl}
-                  alt={hw.name}
-                  className="w-12 h-12 rounded-full object-cover shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <Link
-                    to={`/worker/${hw.id}`}
-                    className="font-semibold text-text-primary hover:text-accent transition-colors truncate block"
-                  >
-                    {hw.name}
-                  </Link>
-                  <p className="text-text-muted text-sm">
-                    {hw.role} &middot; Since {hw.startDate}
+                  <p className="text-accent text-sm font-semibold uppercase tracking-wide mb-2">
+                    Active Shifts
+                  </p>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
+                    {activeCount} shift{activeCount !== 1 ? 's' : ''} active
+                  </h2>
+                  <p className="text-text-secondary mt-1">
+                    {openShifts.length} posted &middot; {claimedShifts.length} claimed
                   </p>
                 </div>
-                <span className="rounded-full px-3 py-1 text-xs font-medium bg-success-soft text-success capitalize">
-                  {hw.status}
-                </span>
-                <Button variant="secondary" size="sm" className="shrink-0">
-                  Add to Payroll
-                </Button>
+                <Link to="/post-shift">
+                  <Button variant="primary" size="md" className="min-h-[44px]">
+                    Post Another Shift
+                  </Button>
+                </Link>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-bg-surface rounded-xl border border-border-subtle p-8 text-center animate-fade-in">
+              <div className="text-4xl mb-3">&#128221;</div>
+              <h2 className="font-display text-xl font-semibold text-text-primary mb-2">
+                Post your first shift
+              </h2>
+              <p className="text-text-secondary mb-6 max-w-md mx-auto">
+                Create a shift posting and connect with qualified workers ready to fill it.
+              </p>
+              <Link to="/post-shift">
+                <Button variant="primary" size="md" className="min-h-[44px]">
+                  Post a Shift
+                </Button>
+              </Link>
+            </div>
+          )}
         </section>
 
-        {/* Rebook Prompt */}
-        <section className="mb-8">
-          <div className="bg-bg-surface rounded-xl border border-accent/30 p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <img
-                src={workers.find((w) => w.id === 8)?.photoUrl}
-                alt="Jasmine Davis"
-                className="w-14 h-14 rounded-full object-cover shrink-0"
-              />
-              <div className="flex-1">
-                <h3 className="font-semibold text-text-primary">Rebook Jasmine Davis?</h3>
-                <p className="text-text-secondary text-sm mt-1">
-                  Last shift: Bartender at Rooftop Bar &middot; Mar 5, 2026 &middot; Rated 5/5
-                </p>
-                <div className="flex flex-wrap gap-2 mt-2 text-text-muted text-xs">
-                  <span className="bg-bg-elevated rounded-full px-3 py-1">Bartender</span>
-                  <span className="bg-bg-elevated rounded-full px-3 py-1">$28/hr</span>
-                  <span className="bg-bg-elevated rounded-full px-3 py-1">6:00 PM - 2:00 AM</span>
+        {/* ── Desktop two-column layout ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Left column: Shifts (2/3 width) */}
+          <div className="md:col-span-2 space-y-8">
+            {/* Open Shifts */}
+            <section>
+              <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
+                Open Shifts
+              </h2>
+              {openShifts.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2" aria-live="polite">
+                  {openShifts.map((shift) => (
+                    <OpenShiftCard key={shift.id} shift={shift} />
+                  ))}
                 </div>
+              ) : (
+                <div className="bg-bg-surface rounded-xl border border-border-subtle">
+                  <EmptySection
+                    icon="&#128203;"
+                    message="No open shifts. Post a shift to get started."
+                    cta="Post a Shift"
+                    to="/post-shift"
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* Claimed Shifts */}
+            <section>
+              <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
+                Claimed Shifts
+              </h2>
+              {claimedShifts.length > 0 ? (
+                <div className="space-y-3" aria-live="polite">
+                  {claimedShifts.map((shift) => {
+                    const worker = workerMap[shift.workerId];
+                    return (
+                      <ClaimedShiftCard
+                        key={shift.id}
+                        shift={shift}
+                        workerName={worker?.name || 'Worker'}
+                        workerRating={worker?.ratingAverage || 0}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-bg-surface rounded-xl border border-border-subtle">
+                  <EmptySection
+                    icon="&#9203;"
+                    message="No claimed shifts yet. Workers will show up here once they claim your posts."
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* Shift History */}
+            <section>
+              <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
+                Shift History
+              </h2>
+              {completedShifts.length > 0 ? (
+                <div className="space-y-3" aria-live="polite">
+                  {completedShifts.map((shift) => {
+                    const worker = workerMap[shift.workerId];
+                    return (
+                      <HistoryShiftCard
+                        key={shift.id}
+                        shift={shift}
+                        workerName={worker?.name || 'Worker'}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-bg-surface rounded-xl border border-border-subtle">
+                  <EmptySection
+                    icon="&#128214;"
+                    message="No completed shifts yet. Your history will appear here."
+                  />
+                </div>
+              )}
+            </section>
+          </div>
+
+          {/* Right column: Stats + Subscription (1/3 width) */}
+          <div className="space-y-8">
+            {/* Monthly Stats */}
+            <section>
+              <h2 className="font-display text-lg font-semibold text-text-primary mb-4">
+                This Month
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard icon={'\u2705'} value={monthlyStats.fills} label="Shifts Filled" />
+                <StatCard
+                  icon={'\uD83D\uDCB0'}
+                  value={`$${monthlyStats.totalSpend.toFixed(0)}`}
+                  label="Total Spend"
+                />
+                <StatCard
+                  icon={'\uD83D\uDCCB'}
+                  value={openShifts.length}
+                  label="Open Posts"
+                />
+                <StatCard
+                  icon={'\u2B50'}
+                  value={currentRestaurant.ratingAverage?.toFixed(1) || '0.0'}
+                  label={`${currentRestaurant.ratingCount || 0} Reviews`}
+                />
               </div>
-              <Button variant="primary" size="md" className="shrink-0">
-                Rebook
-              </Button>
+            </section>
+
+            {/* Subscription Status */}
+            <SubscriptionCard shiftPostCount={shiftPostCount} />
+
+            {/* Post a Shift CTA (mobile prominence) */}
+            <div className="md:hidden">
+              <Link to="/post-shift">
+                <Button variant="primary" size="lg" className="w-full min-h-[44px]">
+                  Post a Shift
+                </Button>
+              </Link>
             </div>
           </div>
-        </section>
-
-        {/* Post a Job CTA */}
-        <div className="mt-4">
-          <Button variant="primary" size="lg" className="w-full sm:w-auto">
-            Post a New Shift
-          </Button>
         </div>
       </div>
     </div>

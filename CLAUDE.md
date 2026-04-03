@@ -26,3 +26,10 @@ Tailwind v4 does NOT use `tailwind.config.js`. All theme customization lives in 
 - **Run**: `npm run dev` (localhost:3000)
 - **Build**: `npm run build`
 - **Project root**: `C:\Shiftd`
+
+## Obsidian Notes Config
+project: shiftpay
+vault_path: C:/Users/Cmcna/Dev/notes
+write_path: C:/Users/Cmcna/Dev/notes/projects/shiftpay
+state_file: control/STATE.md
+tasks_file: control/TASKS.md

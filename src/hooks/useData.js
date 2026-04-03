@@ -6,6 +6,11 @@ import {
   fetchRestaurantById,
   fetchShifts,
   fetchShiftById,
+  fetchOpenings,
+  createShift,
+  claimShift,
+  getShiftPostCount,
+  createReview,
 } from '../lib/api';
 
 // Mock data fallbacks
@@ -110,4 +115,100 @@ export function useShift(id) {
   );
 
   return { shift: data, loading, error };
+}
+
+// Build mock openings from mock restaurants for fallback
+const mockOpenings = mockRestaurants.flatMap((r) =>
+  (r.openings || []).map((o, i) => ({
+    id: `${r.id}-${i}`,
+    role: o.role,
+    payRange: o.payRange,
+    urgency: o.urgency,
+    restaurantId: r.id,
+    restaurantName: r.name,
+    restaurantPhoto: r.photoUrl,
+    restaurantCity: r.city,
+    restaurantRating: r.ratingAverage,
+    restaurantRatingCount: r.ratingCount,
+  }))
+);
+
+export function useOpenings() {
+  const { data, loading, error } = useQuery(fetchOpenings, mockOpenings);
+  return { openings: data || [], loading, error };
+}
+
+// ────────────────────────────────────────────────────────────
+// Mutation hooks
+// ────────────────────────────────────────────────────────────
+
+export function useCreateShift() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (shiftData) => {
+    setLoading(true);
+    setError(null);
+    const result = await createShift(shiftData);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useClaimShift() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (shiftId) => {
+    setLoading(true);
+    setError(null);
+    const result = await claimShift(shiftId);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useCreateReview() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (reviewData) => {
+    setLoading(true);
+    setError(null);
+    const result = await createReview(reviewData);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useShiftPostCount() {
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getShiftPostCount().then(result => {
+      setCount(result.data || 0);
+      setLoading(false);
+    });
+  }, []);
+
+  return { count, loading };
 }

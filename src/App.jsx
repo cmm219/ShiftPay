@@ -13,6 +13,7 @@ import RestaurantProfile from './pages/RestaurantProfile'
 import WorkerDashboard from './pages/WorkerDashboard'
 import RestaurantDashboard from './pages/RestaurantDashboard'
 import ShiftDetail from './pages/ShiftDetail'
+import PostShift from './pages/PostShift'
 
 function NotFound() {
   return (
@@ -62,6 +63,14 @@ function App() {
                 }
               />
               <Route path="/jobs/:id" element={<ShiftDetail />} />
+              <Route
+                path="/post-shift"
+                element={
+                  <ProtectedRoute requiredRole="restaurant">
+                    <PostShift />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
