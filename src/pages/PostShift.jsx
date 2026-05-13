@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import useLocalStorageForm from '../hooks/useLocalStorageForm';
 import { useAuth } from '../hooks/useAuth';
-import { createShift } from '../lib/api';
+import { createOpening, createShift } from '../lib/api';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -535,15 +535,14 @@ function hasErrors(errors) {
 // ---------------------------------------------------------------------------
 
 export default function PostShift() {
-  const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
 
   // Derive smart defaults (city from profile if available)
   const defaultCity = profile?.city || '';
 
   const startDefault = defaultStartTime();
 
-  const [formData, updateField, updateFields, clearForm, isLoaded] =
+  const [formData, updateField, , clearForm, isLoaded] =
     useLocalStorageForm('shiftpay-post-shift', {
       step: 1,
       shiftType: 'urgent',
@@ -629,7 +628,9 @@ export default function PostShift() {
         isUrgent: isUrgent && formData.isUrgent,
       };
 
-      const result = await createShift(payload);
+      const result = isUrgent
+        ? await createShift(payload)
+        : await createOpening(payload);
 
       if (result.error) {
         setSubmitError(result.error.message || 'Failed to post shift. Please try again.');
@@ -641,6 +642,7 @@ export default function PostShift() {
       clearForm();
       setSuccess({
         city: payload.city,
+        type: isUrgent ? 'shift' : 'opening',
         // Mock worker count for the notification message
         workersNotified: Math.floor(Math.random() * 40) + 10,
       });
@@ -664,10 +666,12 @@ export default function PostShift() {
               </svg>
             </div>
             <h2 className="text-2xl font-display text-text-primary mb-2">
-              Shift Posted!
+              {success.type === 'opening' ? 'Opening Posted!' : 'Shift Posted!'}
             </h2>
             <p className="text-text-secondary mb-8">
-              Notified {success.workersNotified} workers in {success.city}.
+              {success.type === 'opening'
+                ? `Your long-term opening is now visible to workers in ${success.city}.`
+                : `Notified ${success.workersNotified} workers in ${success.city}.`}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link

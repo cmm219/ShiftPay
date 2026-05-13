@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useShifts, useRestaurants, useWorkers, useShiftPostCount } from '../hooks/useData';
+import {
+  useShifts,
+  useRestaurants,
+  useWorkers,
+  useShiftPostCount,
+  useSubscription,
+  useCreateSubscriptionCheckout,
+} from '../hooks/useData';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
@@ -174,10 +181,11 @@ function EmptySection({ icon, message, cta, to }) {
   );
 }
 
-function SubscriptionCard({ shiftPostCount }) {
+function SubscriptionCard({ shiftPostCount, subscription, onUpgrade, upgradeLoading }) {
   const FREE_LIMIT = 3;
   const remaining = Math.max(0, FREE_LIMIT - shiftPostCount);
-  const isFree = true; // No subscription system yet
+  const isPro = subscription?.plan === 'pro' && subscription?.status === 'active';
+  const isFree = !isPro;
 
   return (
     <div className="bg-bg-surface rounded-xl border border-border-subtle p-6">
@@ -217,11 +225,22 @@ function SubscriptionCard({ shiftPostCount }) {
             <p className="text-text-secondary text-sm mb-3">
               Upgrade to Pro &mdash; unlimited posts, $15/fill instead of $30.
             </p>
-            <Button variant="primary" size="sm" className="w-full min-h-[44px]" disabled>
-              Upgrade Coming Soon
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full min-h-[44px]"
+              onClick={onUpgrade}
+              disabled={upgradeLoading}
+            >
+              {upgradeLoading ? 'Opening Checkout...' : 'Upgrade Plan'}
             </Button>
           </div>
         </>
+      )}
+      {!isFree && (
+        <p className="text-text-secondary text-sm">
+          Pro is active. You have unlimited posts and $15 fills.
+        </p>
       )}
     </div>
   );
@@ -237,14 +256,16 @@ export default function RestaurantDashboard() {
   const { restaurants, loading: restaurantsLoading } = useRestaurants();
   const { workers, loading: workersLoading } = useWorkers();
   const { count: shiftPostCount } = useShiftPostCount();
+  const { subscription } = useSubscription();
+  const subscriptionCheckout = useCreateSubscriptionCheckout();
 
   // Find current restaurant
   const currentRestaurant = useMemo(() => {
     if (!user || !restaurants.length) return null;
-    return restaurants.find((r) => String(r.id) === String(profile?.restaurant_id)) ||
-           restaurants.find((r) => r.name && user.email) ||
-           // Fallback for mock data: use first restaurant
-           restaurants[0];
+    if (profile?.restaurant_id) {
+      return restaurants.find((r) => String(r.id) === String(profile.restaurant_id)) || null;
+    }
+    return null;
   }, [user, profile, restaurants]);
 
   // Build worker lookup
@@ -502,7 +523,12 @@ export default function RestaurantDashboard() {
             </section>
 
             {/* Subscription Status */}
-            <SubscriptionCard shiftPostCount={shiftPostCount} />
+            <SubscriptionCard
+              shiftPostCount={shiftPostCount}
+              subscription={subscription}
+              onUpgrade={subscriptionCheckout.mutate}
+              upgradeLoading={subscriptionCheckout.loading}
+            />
 
             {/* Post a Shift CTA (mobile prominence) */}
             <div className="md:hidden">

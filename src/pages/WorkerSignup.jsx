@@ -661,7 +661,7 @@ function validateStep(step, formData, { password, confirmPassword } = {}) {
 export default function WorkerSignup() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
-  const [formData, updateField, updateFields, clearForm, isLoaded] =
+  const [formData, updateField, , clearForm, isLoaded] =
     useLocalStorageForm('shiftpay-worker-signup', {
       step: 1,
       name: '',

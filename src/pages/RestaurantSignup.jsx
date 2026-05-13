@@ -357,7 +357,7 @@ function validateStep(step, formData, { password, confirmPassword } = {}) {
 export default function RestaurantSignup() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
-  const [formData, updateField, updateFields, clearForm, isLoaded] =
+  const [formData, updateField, , clearForm, isLoaded] =
     useLocalStorageForm('shiftpay-restaurant-signup', {
       step: 1,
       name: '',

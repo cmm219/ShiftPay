@@ -1,12 +1,11 @@
-import { createContext, useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-
-export const AuthContext = createContext(null)
+import { AuthContext } from './authContextValue'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !!supabase)
 
   const fetchProfile = useCallback(async (userId) => {
     if (!supabase) return
@@ -20,14 +19,34 @@ export function AuthProvider({ children }) {
       console.error('Error fetching profile:', error.message)
       setProfile(null)
     } else {
-      setProfile(data)
+      let entityId = null
+      if (data.role === 'worker') {
+        const { data: worker } = await supabase
+          .from('workers')
+          .select('id')
+          .eq('profile_id', userId)
+          .maybeSingle()
+        entityId = worker?.id || null
+      } else if (data.role === 'restaurant') {
+        const { data: restaurant } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('profile_id', userId)
+          .maybeSingle()
+        entityId = restaurant?.id || null
+      }
+
+      setProfile({
+        ...data,
+        worker_id: data.role === 'worker' ? entityId : null,
+        restaurant_id: data.role === 'restaurant' ? entityId : null,
+      })
     }
   }, [])
 
   useEffect(() => {
     // If Supabase is not configured, skip auth and render app in guest mode
     if (!supabase) {
-      setLoading(false)
       return
     }
 

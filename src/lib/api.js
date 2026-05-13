@@ -233,6 +233,29 @@ export async function createShift({ role, date, startTime, endTime, payRate, cit
   return { data: transformShift(data), error: null };
 }
 
+export async function createOpening({ role, payRate, isUrgent }) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const restaurantId = await getMyRestaurantId();
+  if (restaurantId.error) return { data: null, error: restaurantId.error };
+  if (!restaurantId.data) return { data: null, error: { message: 'Not a registered restaurant' } };
+
+  const { data, error } = await supabase
+    .from('openings')
+    .insert({
+      restaurant_id: restaurantId.data,
+      role,
+      pay_range: payRate ? `$${Number(payRate).toFixed(2)}/hr` : null,
+      urgency: isUrgent ? 'urgent' : 'normal',
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (error) return { data: null, error };
+  return { data, error: null };
+}
+
 export async function claimShift(shiftId) {
   if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
 
@@ -339,6 +362,34 @@ export async function fetchSubscription() {
     } : null,
     error: null,
   };
+}
+
+export async function createSubscriptionCheckout() {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: { type: 'subscription' },
+  });
+
+  if (error) return { data: null, error };
+  if (data?.url) {
+    window.location.assign(data.url);
+  }
+  return { data, error: null };
+}
+
+export async function createInvoiceCheckout(invoiceId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: { type: 'invoice', invoiceId },
+  });
+
+  if (error) return { data: null, error };
+  if (data?.url) {
+    window.location.assign(data.url);
+  }
+  return { data, error: null };
 }
 
 export async function fetchInvoices() {

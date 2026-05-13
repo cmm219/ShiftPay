@@ -33,6 +33,18 @@ serve(async (req) => {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const invoiceId = session.metadata?.invoice_id
+      const restaurantId = session.metadata?.restaurant_id
+      if (session.mode === 'subscription' && restaurantId) {
+        await supabase
+          .from('subscriptions')
+          .upsert({
+            restaurant_id: restaurantId,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+            plan: 'pro',
+            status: 'active',
+          }, { onConflict: 'restaurant_id' })
+      }
       if (invoiceId) {
         await supabase
           .from('invoices')

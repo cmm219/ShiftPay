@@ -8,9 +8,14 @@ import {
   fetchShiftById,
   fetchOpenings,
   createShift,
+  createOpening,
   claimShift,
   getShiftPostCount,
   createReview,
+  fetchSubscription,
+  fetchInvoices,
+  createSubscriptionCheckout,
+  createInvoiceCheckout,
 } from '../lib/api';
 
 // Mock data fallbacks
@@ -29,10 +34,13 @@ function useQuery(queryFn, fallbackData, deps = []) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
-    queryFn().then((result) => {
+    Promise.resolve().then(() => {
       if (cancelled) return;
+      setLoading(true);
+      return queryFn();
+    }).then((result) => {
+      if (cancelled || !result) return;
 
       if (result.fromMock || result.error) {
         // Use mock data as fallback
@@ -51,6 +59,7 @@ function useQuery(queryFn, fallbackData, deps = []) {
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return { data, loading, error };
@@ -161,6 +170,25 @@ export function useCreateShift() {
   return { mutate, loading, error };
 }
 
+export function useCreateOpening() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (openingData) => {
+    setLoading(true);
+    setError(null);
+    const result = await createOpening(openingData);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
 export function useClaimShift() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -211,4 +239,52 @@ export function useShiftPostCount() {
   }, []);
 
   return { count, loading };
+}
+
+export function useSubscription() {
+  const { data, loading, error } = useQuery(fetchSubscription, null);
+  return { subscription: data, loading, error };
+}
+
+export function useInvoices() {
+  const { data, loading, error } = useQuery(fetchInvoices, []);
+  return { invoices: data || [], loading, error };
+}
+
+export function useCreateSubscriptionCheckout() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await createSubscriptionCheckout();
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useCreateInvoiceCheckout() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (invoiceId) => {
+    setLoading(true);
+    setError(null);
+    const result = await createInvoiceCheckout(invoiceId);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
 }

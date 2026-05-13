@@ -9,7 +9,7 @@ CREATE TABLE subscriptions (
   stripe_customer_id TEXT NOT NULL,
   stripe_subscription_id TEXT,
   plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro')),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'past_due', 'trialing')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'past_due', 'trialing', 'incomplete')),
   current_period_start TIMESTAMPTZ,
   current_period_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

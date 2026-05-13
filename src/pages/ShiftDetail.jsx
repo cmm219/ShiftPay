@@ -134,8 +134,8 @@ export default function ShiftDetail() {
   const isAuthenticated = !!user;
 
   // Ownership checks
-  const isOwnWorkerShift = isWorker && shift?.workerId && String(shift.workerId) === String(profile?.worker_id || profile?.id);
-  const isOwnRestaurantShift = isRestaurant && shift?.restaurantId && String(shift.restaurantId) === String(profile?.restaurant_id || profile?.id);
+  const isOwnWorkerShift = isWorker && shift?.workerId && profile?.worker_id && String(shift.workerId) === String(profile.worker_id);
+  const isOwnRestaurantShift = isRestaurant && shift?.restaurantId && profile?.restaurant_id && String(shift.restaurantId) === String(profile.restaurant_id);
   const shiftPast = useMemo(() => isShiftPast(shift), [shift]);
 
   // ── Loading ──
@@ -174,7 +174,6 @@ export default function ShiftDetail() {
     status,
     isUrgent,
     workerId,
-    restaurantId,
     feedback,
   } = shift;
 

@@ -250,11 +250,10 @@ export default function WorkerDashboard() {
   // Find current worker record by matching auth user ID or profile
   const currentWorker = useMemo(() => {
     if (!user || !workers.length) return null;
-    // Try matching by profile user_id
-    return workers.find((w) => String(w.id) === String(profile?.worker_id)) ||
-           workers.find((w) => w.email === user.email) ||
-           // Fallback for mock data: use first worker if authenticated
-           workers[0];
+    if (profile?.worker_id) {
+      return workers.find((w) => String(w.id) === String(profile.worker_id)) || null;
+    }
+    return workers.find((w) => w.email === user.email) || null;
   }, [user, profile, workers]);
 
   // Filter shifts for current worker
@@ -283,7 +282,7 @@ export default function WorkerDashboard() {
   // Reliability score
   const { completedCount, noShowCount } = useMemo(() => {
     const completed = myShifts.filter((s) => s.status === 'completed').length;
-    const noShows = myShifts.filter((s) => s.status === 'cancelled').length;
+    const noShows = myShifts.filter((s) => s.status === 'no_show').length;
     return { completedCount: completed, noShowCount: noShows };
   }, [myShifts]);
 
