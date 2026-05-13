@@ -7,3 +7,10 @@ dist
 .DS_Store
 Thumbs.db
 nul
+.gstack/
+AGENTS.md
+.claude/
+.openchrome/
+.code-review-graph/
+test-results/
+playwright-report/

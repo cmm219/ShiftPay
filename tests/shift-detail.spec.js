@@ -40,30 +40,29 @@ test.describe('Shift Detail (/jobs/:id)', () => {
     await expect(page.locator('h2:has-text("Requirements")')).toBeVisible();
   });
 
-  test('shows Time Remaining countdown', async ({ page }) => {
-    await expect(page.locator('text=Time Remaining')).toBeVisible();
+  test('shows contact gating copy before completion', async ({ page }) => {
+    await expect(page.locator('text=Contact info available after shift completion')).toBeVisible();
   });
 
-  test('countdown has progress bar', async ({ page }) => {
-    const bar = page.locator('[class*="bg-gradient-to-r"][class*="rounded-full"]');
-    await expect(bar).toBeVisible();
+  test('shows available status badge', async ({ page }) => {
+    await expect(page.getByText('Available', { exact: true })).toBeVisible();
   });
 
-  test('Claim Now button is visible', async ({ page }) => {
-    await expect(page.locator('button:has-text("Claim Now")')).toBeVisible();
+  test('Sign in to Claim button is visible for guests', async ({ page }) => {
+    await expect(page.locator('text=Sign in to Claim')).toBeVisible();
   });
 
-  test('shows first-to-claim helper text', async ({ page }) => {
-    await expect(page.locator('text=First to claim gets the shift')).toBeVisible();
+  test('shows account-required helper text for guests', async ({ page }) => {
+    await expect(page.locator('text=You need an account to claim shifts.')).toBeVisible();
   });
 
-  test('Back link navigates home', async ({ page }) => {
+  test('Back link navigates to browse', async ({ page }) => {
     await page.click('a:has-text("Back")');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/browse');
   });
 
-  test('404 for non-existent shift', async ({ page }) => {
+  test('not found state for non-existent shift', async ({ page }) => {
     await page.goto('/jobs/99999');
-    await expect(page.locator('text=404')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Shift not found')).toBeVisible({ timeout: 10000 });
   });
 });
