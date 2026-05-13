@@ -60,7 +60,7 @@ Create `.env.local` from the example file:
 cp .env.example .env.local
 ```
 
-For UI-only review, leave the values blank and the app will use mock data for public read flows. For real backend flows, provide Supabase credentials and apply the migrations in `supabase/migrations`.
+For UI-only review, keep `VITE_FORCE_MOCK_DATA=true` and the app will use mock data for public read flows without attempting network calls. For real backend flows, set `VITE_FORCE_MOCK_DATA=false`, provide Supabase credentials, and apply the migrations in `supabase/migrations`.
 
 ### Run Locally
 
