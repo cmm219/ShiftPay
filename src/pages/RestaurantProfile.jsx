@@ -1,21 +1,23 @@
 import { useParams, Link } from 'react-router-dom';
-import { useRestaurant } from '../hooks/useData';
+import { useOpenings, useRestaurant } from '../hooks/useData';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { isActiveOpening } from '../utils/postingLifecycle';
 
 export default function RestaurantProfile() {
   const { id } = useParams();
   const { restaurant, loading } = useRestaurant(id);
+  const { openings: allOpenings } = useOpenings();
 
-  if (loading) return <LoadingSpinner message="Loading restaurant..." />;
+  if (loading) return <LoadingSpinner message="Loading hiring profile..." />;
 
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center font-body">
         <div className="text-center">
           <h1 className="font-display text-4xl font-bold text-text-primary">404</h1>
-          <p className="mt-2 text-text-secondary text-lg">Restaurant not found.</p>
+          <p className="mt-2 text-text-secondary text-lg">Hiring profile not found.</p>
           <Link
             to="/"
             className="mt-6 inline-block text-accent hover:text-accent-hover transition-colors"
@@ -36,8 +38,11 @@ export default function RestaurantProfile() {
     employeeCount,
     ratingAverage,
     ratingCount,
-    openings,
   } = restaurant;
+
+  const openings = allOpenings.filter(
+    (opening) => String(opening.restaurantId) === String(id) && isActiveOpening(opening)
+  );
 
   return (
     <div className="min-h-screen bg-bg-primary font-body">
@@ -60,7 +65,7 @@ export default function RestaurantProfile() {
           className="h-64 w-full object-cover rounded-xl"
         />
 
-        {/* Restaurant info */}
+        {/* Hiring profile info */}
         <div className="mt-6 flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="font-display text-3xl font-bold text-text-primary">{name}</h1>
@@ -88,14 +93,14 @@ export default function RestaurantProfile() {
           <p className="text-text-secondary leading-relaxed">{about}</p>
         </section>
 
-        {/* Current Openings */}
+        {/* Current Jobs */}
         <section className="mt-10">
           <h2 className="font-display text-xl font-semibold text-text-primary mb-5">
-            Current Openings
+            Current Jobs
           </h2>
 
           {openings.length === 0 ? (
-            <p className="text-text-muted">No current openings.</p>
+            <p className="text-text-muted">No current jobs.</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {openings.map((opening, idx) => (

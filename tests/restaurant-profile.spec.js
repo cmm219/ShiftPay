@@ -36,8 +36,8 @@ test.describe('Restaurant Profile (/restaurant/:id)', () => {
     await expect(page.locator('h2:has-text("About")')).toBeVisible();
   });
 
-  test('shows Current Openings section', async ({ page }) => {
-    await expect(page.locator('h2:has-text("Current Openings")')).toBeVisible();
+  test('shows Current Jobs section', async ({ page }) => {
+    await expect(page.locator('h2:has-text("Current Jobs")')).toBeVisible();
   });
 
   test('opening cards show pay range', async ({ page }) => {

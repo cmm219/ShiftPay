@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useWorkers, useOpenings } from '../hooks/useData';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ROLE_LIST, ROLES, CITIES } from '../utils/constants';
+import { isActiveOpening } from '../utils/postingLifecycle';
 
 // ─────────────────────────────────────────────────────────────
 // Inline SVG icons — kept local so the page has no extra deps
@@ -130,7 +131,7 @@ const WORKER_SORTS = [
 ];
 
 const OPENING_SORTS = [
-  { id: 'rating', label: 'Restaurant rating' },
+  { id: 'rating', label: 'Company rating' },
   { id: 'urgency', label: 'Urgent first' },
   { id: 'recent', label: 'Recently posted' },
 ];
@@ -235,6 +236,8 @@ function OpeningCard({ opening }) {
     restaurantCity,
     restaurantRating,
     restaurantRatingCount,
+    expiryLabel,
+    lifecycleStatus,
   } = opening;
 
   return (
@@ -273,11 +276,21 @@ function OpeningCard({ opening }) {
             Urgent
           </span>
         )}
+        {lifecycleStatus === 'expiring_soon' && (
+          <span className="rounded border border-warning/30 bg-warning-soft px-1.5 py-0.5 font-mono text-[10px] tracking-wide text-warning uppercase">
+            Expiring soon
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between border-t border-border-subtle pt-3.5">
         <div className="font-mono text-[13px] font-semibold text-accent">
           {payRange}
+          {expiryLabel && (
+            <div className="mt-0.5 text-[10px] font-medium text-text-muted">
+              {expiryLabel}
+            </div>
+          )}
         </div>
         <Link
           to={`/restaurant/${restaurantId}`}
@@ -328,7 +341,7 @@ function FilterRail({
             type="text"
             value={state.search || ''}
             onChange={(e) => setState({ ...state, search: e.target.value })}
-            placeholder={isWorkers ? 'Name, city, role…' : 'Restaurant, role…'}
+            placeholder={isWorkers ? 'Name, city, role…' : 'Company, role…'}
             className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
           />
         </div>
@@ -546,6 +559,7 @@ export default function Browse() {
   const filteredOpenings = useMemo(() => {
     const term = openingFilters.search.trim().toLowerCase();
     let list = openings.filter((o) => {
+      if (!isActiveOpening(o)) return false;
       if (term) {
         const haystack = [
           o.restaurantName,
@@ -575,7 +589,7 @@ export default function Browse() {
           return urgencyScore(b.urgency) - urgencyScore(a.urgency);
         }
         case 'recent':
-          return 0;
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
         case 'rating':
         default:
           return (b.restaurantRating || 0) - (a.restaurantRating || 0);
@@ -632,7 +646,7 @@ export default function Browse() {
         message={
           activeTab === 'workers'
             ? 'Loading workers...'
-            : 'Loading openings...'
+            : 'Loading jobs...'
         }
       />
     );
@@ -647,7 +661,7 @@ export default function Browse() {
           Demo data
         </span>
         <span className="text-[#f5d27d]">
-          Browsing {workers.length} seeded workers and {openings.length} openings.
+          Browsing {workers.length} seeded workers and {openings.filter(isActiveOpening).length} active jobs.
           Search, sort, and filters are local client-side demo controls — no live
           applications are sent.
         </span>
@@ -694,12 +708,12 @@ export default function Browse() {
           {/* Page heading */}
           <div className="mb-5">
             <h1 className="font-display text-2xl font-semibold tracking-tight text-text-primary md:text-3xl">
-              {activeTab === 'workers' ? 'Workers near you' : 'Open positions'}
+              {activeTab === 'workers' ? 'Workers near you' : 'Open jobs'}
             </h1>
             <p className="mt-1 text-xs text-text-muted">
               {activeTab === 'workers'
                 ? `Filtered by ${activeFilterSummary}`
-                : `${openings.length} long-term openings across seeded restaurants`}
+                : `${openings.filter(isActiveOpening).length} active long-term jobs across seeded hiring teams`}
             </p>
           </div>
 
@@ -734,7 +748,7 @@ export default function Browse() {
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
-                Openings
+                Jobs
                 <span
                   className={`rounded bg-bg-surface-hover px-1.5 py-0.5 font-mono text-[10px] ${
                     activeTab === 'openings' ? 'text-accent' : 'text-text-muted'
@@ -827,7 +841,7 @@ export default function Browse() {
             </div>
           ) : (
             <EmptyState
-              title="No openings match your filters"
+              title="No jobs match your filters"
               body="Try broadening the search or clearing the city filter."
               onReset={handleReset}
             />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import useLocalStorageForm from '../hooks/useLocalStorageForm';
 import { useAuth } from '../hooks/useAuth';
 import { createOpening, createShift } from '../lib/api';
@@ -88,6 +88,26 @@ function formatDate(d) {
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+function titleCaseRole(value) {
+  if (!value) return '';
+  const normalized = String(value).replace(/-/g, ' ').toLowerCase();
+  const roleMap = {
+    cook: 'Line Cook',
+    server: 'Server',
+    bartender: 'Bartender',
+    host: 'Host/Hostess',
+    dishwasher: 'Dishwasher',
+    barback: 'Barback',
+  };
+  return roleMap[normalized] || normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function numericPay(value) {
+  if (!value) return '';
+  const match = String(value).match(/\d+/);
+  return match ? match[0] : '';
 }
 
 // ---------------------------------------------------------------------------
@@ -183,28 +203,16 @@ function StepBasics({ formData, updateField, errors }) {
   return (
     <div className="space-y-5 animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">
-        Shift Basics
+        Job Basics
       </h2>
       <p className="text-text-secondary text-sm mb-4">
-        Choose the type of shift and the role you need filled.
+        Start with the role you are hiring for. One-time event shifts are available for banquet, catering, and pop-up coverage.
       </p>
 
       {/* Shift type toggle */}
       <div>
-        <Label>Shift Type</Label>
+        <Label>Posting Type</Label>
         <div className="grid grid-cols-2 gap-3 mt-1">
-          <button
-            type="button"
-            onClick={() => updateField('shiftType', 'urgent')}
-            className={`rounded-lg border p-4 text-center transition-all duration-200 cursor-pointer min-h-[44px] ${
-              formData.shiftType === 'urgent'
-                ? 'border-accent bg-accent-soft'
-                : 'border-border-subtle bg-bg-surface hover:border-text-muted'
-            }`}
-          >
-            <div className="text-lg mb-1">Urgent Shift</div>
-            <div className="text-text-muted text-xs">One-time, date-specific</div>
-          </button>
           <button
             type="button"
             onClick={() => updateField('shiftType', 'long-term')}
@@ -214,8 +222,20 @@ function StepBasics({ formData, updateField, errors }) {
                 : 'border-border-subtle bg-bg-surface hover:border-text-muted'
             }`}
           >
-            <div className="text-lg mb-1">Long-term Opening</div>
-            <div className="text-text-muted text-xs">Ongoing position</div>
+            <div className="text-lg mb-1">Long-term Job</div>
+            <div className="text-text-muted text-xs">Primary hiring flow</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => updateField('shiftType', 'urgent')}
+            className={`rounded-lg border p-4 text-center transition-all duration-200 cursor-pointer min-h-[44px] ${
+              formData.shiftType === 'urgent'
+                ? 'border-accent bg-accent-soft'
+                : 'border-border-subtle bg-bg-surface hover:border-text-muted'
+            }`}
+          >
+            <div className="text-lg mb-1">Event Shift</div>
+            <div className="text-text-muted text-xs">Banquet or catering coverage</div>
           </button>
         </div>
       </div>
@@ -311,7 +331,7 @@ function StepBasics({ formData, updateField, errors }) {
         <div className="flex items-center gap-2 bg-accent-soft border border-accent rounded-lg px-4 py-3">
           <span className="text-accent text-sm font-semibold">Ongoing</span>
           <span className="text-text-secondary text-sm">
-            — Workers will see this as a long-term opportunity
+            — Workers will see this as an open restaurant job
           </span>
         </div>
       )}
@@ -330,10 +350,10 @@ function StepDetails({ formData, updateField, errors }) {
   return (
     <div className="space-y-5 animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">
-        Shift Details
+        Job Details
       </h2>
       <p className="text-text-secondary text-sm mb-4">
-        Set the pay and describe what the worker should expect.
+        Set the pay and describe what the worker should expect from this role.
       </p>
 
       {/* Pay rate */}
@@ -368,7 +388,7 @@ function StepDetails({ formData, updateField, errors }) {
           rows={4}
           maxLength={charMax}
           className={`${inputBase} resize-none ${errors.description ? 'border-danger' : ''}`}
-          placeholder="Describe the shift, dress code, expectations..."
+          placeholder="Describe the role, schedule expectations, dress code, or event details..."
           value={formData.description}
           onChange={(e) => updateField('description', e.target.value)}
           aria-describedby={
@@ -408,7 +428,7 @@ function StepDetails({ formData, updateField, errors }) {
               Mark as Urgent
             </span>
             <p className="text-text-muted text-xs mt-0.5">
-              Urgent shifts get priority visibility and push notifications
+              Event shifts get a priority badge in the local demo.
             </p>
           </div>
         </label>
@@ -438,9 +458,9 @@ function StepConfirm({ formData }) {
           label="Type"
           value={
             isUrgent ? (
-              <span className="text-warning font-semibold">Urgent Shift</span>
+              <span className="text-warning font-semibold">Event Shift</span>
             ) : (
-              <span className="text-accent font-semibold">Long-term Opening</span>
+              <span className="text-accent font-semibold">Long-term Job</span>
             )
           }
         />
@@ -455,7 +475,12 @@ function StepConfirm({ formData }) {
             />
           </>
         )}
-        {!isUrgent && <SummaryRow label="Schedule" value="Ongoing" />}
+        {!isUrgent && (
+          <>
+            <SummaryRow label="Schedule" value="Ongoing" />
+            <SummaryRow label="Demo visibility" value="30 days, then repost or renew" />
+          </>
+        )}
         <SummaryRow
           label="Pay Rate"
           value={formData.payRate ? `$${formData.payRate}/hr` : '\u2014'}
@@ -536,6 +561,15 @@ function hasErrors(errors) {
 
 export default function PostShift() {
   const { profile } = useAuth();
+  const [searchParams] = useSearchParams();
+  const repostType = searchParams.get('repost');
+  const typeParam = searchParams.get('type');
+  const isRepost = Boolean(repostType);
+  const defaultShiftType =
+    repostType === 'shift' || typeParam === 'shift' ? 'urgent' : 'long-term';
+  const formStorageKey = isRepost
+    ? `shiftpay-post-shift-repost-${searchParams.toString()}`
+    : 'shiftpay-post-shift';
 
   // Derive smart defaults (city from profile if available)
   const defaultCity = profile?.city || '';
@@ -543,16 +577,16 @@ export default function PostShift() {
   const startDefault = defaultStartTime();
 
   const [formData, updateField, , clearForm, isLoaded] =
-    useLocalStorageForm('shiftpay-post-shift', {
+    useLocalStorageForm(formStorageKey, {
       step: 1,
-      shiftType: 'urgent',
-      role: '',
-      city: defaultCity,
+      shiftType: defaultShiftType,
+      role: titleCaseRole(searchParams.get('role')),
+      city: searchParams.get('city') || defaultCity,
       date: todayISO(),
       startTime: startDefault,
       endTime: defaultEndTime(startDefault),
-      payRate: '',
-      description: '',
+      payRate: numericPay(searchParams.get('payRate')),
+      description: searchParams.get('description') || '',
       isUrgent: false,
     });
 
@@ -633,7 +667,7 @@ export default function PostShift() {
         : await createOpening(payload);
 
       if (result.error) {
-        setSubmitError(result.error.message || 'Failed to post shift. Please try again.');
+        setSubmitError(result.error.message || 'Failed to post. Please try again.');
         setSubmitting(false);
         return;
       }
@@ -643,8 +677,6 @@ export default function PostShift() {
       setSuccess({
         city: payload.city,
         type: isUrgent ? 'shift' : 'opening',
-        // Mock worker count for the notification message
-        workersNotified: Math.floor(Math.random() * 40) + 10,
       });
     } catch (err) {
       setSubmitError(err.message || 'An unexpected error occurred. Please try again.');
@@ -666,12 +698,12 @@ export default function PostShift() {
               </svg>
             </div>
             <h2 className="text-2xl font-display text-text-primary mb-2">
-              {success.type === 'opening' ? 'Opening Posted!' : 'Shift Posted!'}
+              {success.type === 'opening' ? 'Job Posted!' : 'Event Shift Posted!'}
             </h2>
             <p className="text-text-secondary mb-8">
               {success.type === 'opening'
-                ? `Your long-term opening is now visible to workers in ${success.city}.`
-                : `Notified ${success.workersNotified} workers in ${success.city}.`}
+                ? `Your long-term job is now visible in the local demo for ${success.city}.`
+                : `Your event shift is now visible in the local demo for ${success.city}. No live notifications were sent.`}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
@@ -685,7 +717,7 @@ export default function PostShift() {
                 onClick={() => setSuccess(null)}
                 className="text-text-secondary hover:text-text-primary transition-colors px-6 py-2.5 rounded-lg hover:bg-bg-surface-hover cursor-pointer"
               >
-                Post Another Shift
+                Post Another Job
               </button>
             </div>
           </div>
@@ -710,7 +742,7 @@ export default function PostShift() {
               Free Tier Limit Reached
             </h2>
             <p className="text-text-secondary mb-6">
-              You've used all {FREE_TIER_LIMIT} free shift posts. Upgrade to post unlimited shifts and unlock priority placement.
+              You've used all {FREE_TIER_LIMIT} free job posts. Upgrade to post unlimited jobs and unlock priority placement.
             </p>
             <button
               type="button"
@@ -753,12 +785,20 @@ export default function PostShift() {
         {/* Free tier remaining banner */}
         <div className="border border-accent rounded-lg px-4 py-2 flex items-center justify-between mb-6">
           <span className="text-accent text-sm font-semibold tracking-wide">
-            Post a Shift
+            {isRepost ? 'Repost draft' : 'Post a Job'}
           </span>
           <span className="text-text-secondary text-sm">
             {postsRemaining} of {FREE_TIER_LIMIT} posts remaining
           </span>
         </div>
+
+        {isRepost && (
+          <div className="mb-6 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
+            {repostType === 'shift'
+              ? 'Prior event-shift details are prefilled for this local demo. Choose a new future date and time before reposting.'
+              : 'Prior job details are prefilled for this local demo. Reposted jobs start a fresh 30-day visibility window.'}
+          </div>
+        )}
 
         {/* Progress bar */}
         <ProgressBar currentStep={step} />
@@ -818,7 +858,11 @@ export default function PostShift() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                 )}
-                {submitting ? 'Posting Shift...' : 'Post Shift'}
+                {submitting
+                  ? 'Posting...'
+                  : formData.shiftType === 'long-term'
+                    ? 'Post Job'
+                    : 'Post Event Shift'}
               </button>
             )}
           </div>

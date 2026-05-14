@@ -26,10 +26,10 @@ test.describe('Login Page (/login)', () => {
     await expect(submit).toBeVisible();
   });
 
-  test('Worker/Restaurant toggle tabs work', async ({ page }) => {
+  test('Worker/Hiring team toggle tabs work', async ({ page }) => {
     // Tabs are buttons inside the form
-    const workerTab = page.locator('button:has-text("Worker")');
-    const restaurantTab = page.locator('button:has-text("Restaurant")');
+    const workerTab = page.getByRole('button', { name: 'Worker', exact: true });
+    const restaurantTab = page.getByRole('button', { name: 'Hiring team', exact: true });
     await expect(workerTab).toBeVisible();
     await expect(restaurantTab).toBeVisible();
     await restaurantTab.click();

@@ -83,7 +83,7 @@ export default function Navbar() {
                         to="/restaurant/signup"
                         className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover transition-colors"
                       >
-                        I'm a Restaurant
+                        I'm Hiring
                       </Link>
                     </div>
                   </div>
@@ -93,7 +93,7 @@ export default function Navbar() {
 
             {user && role === 'restaurant' && (
               <NavLink to="/post-shift" className={linkClasses}>
-                Post a Shift
+                Post a Job
               </NavLink>
             )}
 
@@ -208,14 +208,14 @@ export default function Navbar() {
                   Sign Up as Worker
                 </NavLink>
                 <NavLink to="/restaurant/signup" className={linkClasses} onClick={() => setMobileOpen(false)}>
-                  Sign Up as Restaurant
+                  Sign Up as Hiring Team
                 </NavLink>
               </>
             )}
 
             {user && role === 'restaurant' && (
               <NavLink to="/post-shift" className={linkClasses} onClick={() => setMobileOpen(false)}>
-                Post a Shift
+                Post a Job
               </NavLink>
             )}
 

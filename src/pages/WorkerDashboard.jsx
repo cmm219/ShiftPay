@@ -196,7 +196,7 @@ function ProfileCompleteness({ worker }) {
       </ul>
       {pct < 100 && (
         <p className="text-text-muted text-xs mt-3">
-          Complete your profile to get priority matching with restaurants.
+          Complete your profile to get priority matching with hiring teams.
         </p>
       )}
     </div>
@@ -306,7 +306,7 @@ export default function WorkerDashboard() {
               Welcome to ShiftPay
             </h1>
             <p className="text-text-secondary mb-8 max-w-md mx-auto">
-              Complete your profile to start getting shift notifications and connect with top restaurants.
+              Complete your profile to start getting job matches and connect with hiring teams.
             </p>
             <Link to="/worker/signup">
               <Button variant="primary" size="lg" className="min-h-[44px]">

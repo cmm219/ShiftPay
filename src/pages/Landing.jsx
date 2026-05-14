@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useWorkers, useOpenings } from '../hooks/useData';
 import { ROLES } from '../utils/constants';
+import { isActiveOpening } from '../utils/postingLifecycle';
 
 // ──────────────────────────────────────────────────────────
 // Inline SVG icon set — line icons only (no emoji deps)
@@ -140,12 +141,12 @@ const BUILT_ITEMS = [
     body: 'Multi-step onboarding forms with role, certification, availability, and restaurant profile inputs.',
   },
   {
-    title: 'Browse workers + openings',
+    title: 'Browse workers + jobs',
     body: 'Filters, sort, search, tabbed marketplace view, detail routes for every card.',
   },
   {
-    title: 'Post a shift',
-    body: 'Restaurant posting flow for role, time window, rate, urgency, and requirements.',
+    title: 'Post a job',
+    body: 'Restaurant posting flow for role, city, rate, description, and optional event-shift timing.',
   },
   {
     title: 'Worker + restaurant dashboards',
@@ -254,7 +255,8 @@ export default function Landing() {
   const [previewTab, setPreviewTab] = useState('workers');
 
   const workerCount = workers.length;
-  const openingCount = openings.length;
+  const activeOpenings = openings.filter(isActiveOpening);
+  const openingCount = activeOpenings.length;
   const featured = workers[0];
   const secondary = workers[1];
   const tertiary = workers[2];
@@ -289,13 +291,13 @@ export default function Landing() {
               Hospitality staffing marketplace · demo build
             </div>
             <h1 className="font-display text-4xl leading-[1.07] font-semibold tracking-tight text-text-primary md:text-[56px]">
-              The shift staffing flow for restaurants,{' '}
+              The restaurant hiring flow for operators,{' '}
               <em className="not-italic text-accent">prototyped end&#8209;to&#8209;end.</em>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-text-secondary md:text-lg">
               ShiftPay is a marketplace concept for matching restaurants with vetted
               front- and back-of-house workers. The demo lets you browse profiles,
-              inspect openings, walk through posting a shift, and review dashboard states against
+              inspect open jobs, walk through posting a role, and review dashboard states against
               seeded data — every screen is clickable.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -321,7 +323,7 @@ export default function Landing() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <Icon name="check" className="h-3.5 w-3.5 text-success" />
-                {workerCount} mock workers · {openingCount} openings seeded
+                {workerCount} mock workers · {openingCount} active jobs seeded
               </span>
               <span className="inline-flex items-center gap-2">
                 <Icon name="check" className="h-3.5 w-3.5 text-success" />
@@ -358,7 +360,7 @@ export default function Landing() {
                         : 'text-text-secondary'
                     }`}
                   >
-                    Openings
+                    Jobs
                     <span className="font-mono text-[10px] text-text-muted">
                       {openingCount}
                     </span>
@@ -377,7 +379,7 @@ export default function Landing() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {openings.slice(0, 3).map((opening, i) => (
+                  {activeOpenings.slice(0, 3).map((opening, i) => (
                     <Link
                       key={opening.id || i}
                       to={`/restaurant/${opening.restaurantId}`}
@@ -453,8 +455,8 @@ export default function Landing() {
               {
                 num: '02 · Restaurant',
                 icon: 'building',
-                title: 'Post a shift',
-                body: 'Role, date, hours, rate, and requirements. The flow demonstrates the posting UI without adding backend work.',
+                title: 'Post a job',
+                body: 'Role, city, rate, description, and lifecycle state. Event-shift timing is available for banquet or catering work.',
                 foot: '/post-shift',
                 to: '/restaurant/signup',
               },
