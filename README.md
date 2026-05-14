@@ -1,28 +1,35 @@
 # ShiftPay
 
-ShiftPay is a hospitality hiring marketplace MVP for demo and portfolio review. It focuses on long-term jobs and hiring-team workflows first, with one-time event shifts available for banquet, catering, pop-up, and similar coverage needs.
+ShiftPay is a portfolio MVP for hospitality hiring teams and workers. The demo focuses on long-term job postings first, with event-shift coverage available for banquet, catering, pop-up, and similar staffing needs.
 
-The app is built to be easy to inspect on GitHub and easy to run locally: React 19, Vite 7, Tailwind CSS 4, Supabase-ready data access, Stripe/Twilio-ready edge function structure, and Playwright coverage. Public demo flows use seeded mock data when Supabase is not configured.
+The app is built for fast GitHub review: React 19, Vite 7, Tailwind CSS 4, React Router 7, mock-data fallback, Supabase-ready data access, and Playwright coverage.
+
+## Screenshots
+
+![Browse jobs](docs/assets/browse-jobs.png)
+
+![Hiring dashboard](docs/assets/hiring-dashboard.png)
+
+![Worker dashboard](docs/assets/worker-dashboard.png)
 
 ## Demo Flow
 
 1. Run the app and open `http://localhost:3000`.
-2. Use **Login -> Demo hiring team** to inspect the hiring dashboard, job lifecycle reminders, renew/close actions, and repost flow.
-3. Use **Login -> Demo worker** to inspect the worker dashboard.
-4. Browse `/browse` for workers and jobs, or use `/swipe` for the card-style worker discovery view.
+2. Use `Login -> Demo hiring team` to review active jobs, local reminder states, renew, close, and repost flows.
+3. Use `Login -> Demo worker` to review the worker dashboard.
+4. Open `/browse` to switch between worker discovery and open jobs, or use `/swipe` for the card-style worker discovery view.
 
-No real accounts, payments, messages, emails, SMS notifications, or live hiring outreach are created in demo mode.
+The local demo does not create real accounts, send messages, process payments, or contact workers.
 
-## Highlights
+## What This Demonstrates
 
 - Jobs-first marketplace browse experience with worker and job tabs.
-- Demo hiring-team dashboard with active jobs, expiring jobs, expired event shifts, renew, close, and repost flows.
-- Public worker profiles, company profiles, job detail pages, and swipe discovery.
-- Multi-step worker and hiring-team onboarding with local form persistence.
-- Supabase data adapter with mock-data fallback for credential-free review.
-- Stripe and Twilio edge-function structure kept isolated from browser code.
-- Responsive dark UI with Tailwind CSS 4 design tokens.
-- Playwright coverage for critical routes and lifecycle workflows.
+- Hiring-team dashboard for long-term jobs, event shifts, posting states, and repost flows.
+- Worker dashboard with profile completeness, reliability, upcoming work, and review history.
+- Multi-step onboarding for workers and hiring teams with local form persistence.
+- API adapter pattern that lets public read flows fall back to seeded data when Supabase is not configured.
+- Responsive Tailwind CSS 4 interface with design tokens in `src/index.css`.
+- Playwright route and workflow coverage for the main demo paths.
 
 ## Tech Stack
 
@@ -30,9 +37,8 @@ No real accounts, payments, messages, emails, SMS notifications, or live hiring 
 | --- | --- |
 | Frontend | React 19, Vite 7, React Router 7 |
 | Styling | Tailwind CSS 4, custom theme tokens |
-| Data/Auth Ready | Supabase Auth, Postgres, RLS, RPCs, Edge Functions |
-| Payments Ready | Stripe Checkout and webhooks |
-| Notifications Ready | Twilio SMS via Supabase Edge Function |
+| Data/Auth Shape | Supabase client, Postgres migrations, RLS policies, edge function examples |
+| Demo Data | Mock JSON arrays with local state for review flows |
 | Testing | ESLint, Playwright |
 
 ## Product Scope
@@ -40,9 +46,9 @@ No real accounts, payments, messages, emails, SMS notifications, or live hiring 
 ShiftPay models two account types:
 
 - **Workers** create profiles with roles, availability, certifications, rates, and experience.
-- **Hiring teams** create company profiles, post long-term jobs, optionally post event shifts, and review lifecycle states.
+- **Hiring teams** create company profiles, post long-term jobs, optionally post event shifts, and manage posting visibility.
 
-The current portfolio build is intentionally demo-safe. Lifecycle expiration, renewal, and repost behavior is wired in the frontend with local demo state. Real email/SMS reminders, cron jobs, durable notification logs, and production hiring operations are future backend work.
+This repository is a public portfolio build. Backend operations, real outreach, real billing, production monitoring, and launch runbooks are intentionally outside the public demo scope.
 
 ## Getting Started
 
@@ -50,8 +56,6 @@ The current portfolio build is intentionally demo-safe. Lifecycle expiration, re
 
 - Node.js 18+
 - npm
-- Optional: Supabase project for real auth/database flows
-- Optional: Stripe and Twilio credentials for payment/SMS edge functions
 
 ### Install
 
@@ -67,7 +71,7 @@ Create `.env.local` from the example file:
 cp .env.example .env.local
 ```
 
-For UI-only review, keep `VITE_FORCE_MOCK_DATA=true` and the app will use mock data for public read flows without attempting network calls. For real backend flows, set `VITE_FORCE_MOCK_DATA=false`, provide Supabase credentials, and apply the migrations in `supabase/migrations`.
+For local review, keep `VITE_FORCE_MOCK_DATA=true`. The app will use seeded data for public routes without requiring private infrastructure.
 
 ### Run Locally
 
@@ -91,8 +95,8 @@ npm run test:e2e
 | --- | --- |
 | `/` | Portfolio landing page |
 | `/browse` | Worker and job marketplace |
-| `/swipe` | Worker discovery view |
-| `/login` | Login plus demo worker / demo hiring-team access |
+| `/swipe` | Card-style worker discovery |
+| `/login` | Login plus demo worker and demo hiring-team access |
 | `/hiring/signup` | Hiring-team onboarding |
 | `/worker/signup` | Worker onboarding |
 | `/dashboard/hiring` | Hiring-team dashboard |
@@ -101,37 +105,29 @@ npm run test:e2e
 | `/company/:id` | Public company profile |
 | `/jobs/:id` | Event-shift detail route |
 
-Legacy routes such as `/restaurant/signup`, `/dashboard/restaurant`, `/post-shift`, and `/restaurant/:id` remain available for compatibility with the existing schema and older links.
-
 ## Repository Structure
 
 ```text
 src/
   components/        Reusable UI primitives and cards
   contexts/          Auth provider and context value
-  data/              Mock demo data
+  data/              Seeded demo data
   hooks/             Data, auth, form, and filter hooks
   lib/               Supabase client and API adapter
   pages/             Route-level React views
   utils/             Shared constants and posting lifecycle helpers
 supabase/
-  functions/         Stripe and notification edge functions
-  migrations/        Database schema, RLS policies, RPCs, billing, SMS logs
+  functions/         Edge function examples
+  migrations/        Database schema, RLS policies, and RPC examples
 tests/               Playwright route and flow coverage
 ```
 
-## Architecture Notes
+The current storage schema still uses legacy `restaurants` and `shifts` names in a few places while the public UI presents hiring-team, company, job, and event-shift language.
 
-- The frontend talks to `src/lib/api.js` instead of scattering Supabase calls through pages.
-- Current database table and role names still use `restaurants` and `shifts`; UI routes/components are moving toward hiring-team/company/job language while preserving compatibility.
-- Public read flows degrade to mock data when Supabase is not configured, which keeps the app reviewable without exposing private infrastructure.
-- Demo lifecycle state is stored locally so reviewers can renew, close, and repost without backend jobs.
-- Payment and notification integrations are isolated in Supabase Edge Functions so browser code never handles service secrets.
+## Public Portfolio Boundary
 
-## Current Boundaries
-
-This is an MVP, not a deployed marketplace. Real operational monitoring, production seed data, file uploads, admin adjudication, scheduled reminder delivery, and live messaging are intentionally outside the current scope.
+The public repository is intended to show product thinking, UI execution, React architecture, and test coverage. Detailed planning notes, private operating notes, and launch-specific runbooks are not included in the public branch.
 
 ## License
 
-Portfolio project. All rights reserved unless a license is added.
+All rights reserved. See [LICENSE](LICENSE).
