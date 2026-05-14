@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { addSavedOpening, getSavedJobsWorkerKey } from '../utils/savedJobs';
 
 const ROLE_TABS = [
   { id: 'worker', label: 'Worker' },
@@ -36,17 +37,32 @@ export default function Login() {
 
   const { user, profile, signIn, signInWithPhone, verifyOtp, signInDemo } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const pendingSaveJob = searchParams.get('saveJob');
+  const unsafeReturnTo = searchParams.get('returnTo');
+  const returnTo = unsafeReturnTo && /^\/(?!\/)/.test(unsafeReturnTo) ? unsafeReturnTo : null;
 
   // Once user and profile are loaded after sign-in, redirect by role
   useEffect(() => {
     if (user && profile?.role) {
+      if (profile.role === 'worker' && pendingSaveJob) {
+        addSavedOpening(getSavedJobsWorkerKey(profile, user), pendingSaveJob);
+        navigate(returnTo || '/dashboard/worker', { replace: true });
+        return;
+      }
+
+      if (pendingSaveJob && profile.role !== 'worker') {
+        setError('Only worker accounts can save jobs.');
+        return;
+      }
+
       const dest =
         profile.role === 'restaurant'
           ? '/dashboard/hiring'
           : '/dashboard/worker';
       navigate(dest, { replace: true });
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, pendingSaveJob, returnTo, navigate]);
 
   // Cooldown timer
   useEffect(() => {
@@ -175,7 +191,17 @@ export default function Login() {
   };
 
   const handleDemoSignIn = (role) => {
-    signInDemo(role);
+    if (pendingSaveJob && role !== 'worker') {
+      setError('Only worker accounts can save jobs.');
+      return;
+    }
+
+    const session = signInDemo(role);
+    if (role === 'worker' && pendingSaveJob) {
+      addSavedOpening(getSavedJobsWorkerKey(session.profile, session.user), pendingSaveJob);
+      navigate(returnTo || '/dashboard/worker');
+      return;
+    }
     navigate(role === 'restaurant' ? '/dashboard/hiring' : '/dashboard/worker');
   };
 

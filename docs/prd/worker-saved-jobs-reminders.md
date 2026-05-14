@@ -1,6 +1,6 @@
 ---
 title: Worker Saved Jobs and Expiring Job Reminders
-status: draft
+status: ready
 date: 2026-05-14
 owner: Codex
 product_surface: Worker browse, job detail, worker dashboard, saved jobs, reminder readiness
@@ -322,7 +322,7 @@ Future production:
 
 None of these block a first saved-jobs PRD or a demo-only implementation.
 
-## Initial Review Score
+## Review Score
 
 Self-score before Claude review:
 
