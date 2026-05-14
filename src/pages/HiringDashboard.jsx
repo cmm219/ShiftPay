@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   useShifts,
-  useOpenings,
   useCompanies,
   useWorkers,
+  useHiringLifecycleData,
   useShiftPostCount,
   useSubscription,
   useCreateSubscriptionCheckout,
+  useRenewOpening,
+  useCloseOpening,
+  useCloseShift,
+  useDismissPostingReminder,
 } from '../hooks/useData';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
@@ -194,7 +198,22 @@ function EmptySection({ icon, message, cta, to }) {
   );
 }
 
-function AttentionOpeningCard({ opening, onRenew, onClose }) {
+function formatReminderThreshold(threshold) {
+  switch (threshold) {
+    case '7_day':
+      return '7-day in-app reminder';
+    case '3_day':
+      return '3-day in-app reminder';
+    case '24_hour':
+      return '24-hour in-app reminder';
+    case 'expired':
+      return 'Expired in-app reminder';
+    default:
+      return 'In-app reminder';
+  }
+}
+
+function AttentionOpeningCard({ opening, reminder, onDismissReminder, onRenew, onClose }) {
   const isExpired = opening.lifecycleStatus === 'expired';
   const isClosed = opening.lifecycleStatus === 'closed';
   const isExpiring = opening.lifecycleStatus === 'expiring_soon';
@@ -226,6 +245,19 @@ function AttentionOpeningCard({ opening, onRenew, onClose }) {
               ? `Last visible ${formatLifecycleDate(opening.expiresAt)}`
               : `${opening.expiryLabel}. Renew for 30 days to keep this job visible to workers.`}
           </p>
+          {reminder && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-accent/20 bg-accent-soft px-3 py-2 text-xs text-accent">
+              <span className="font-semibold">{formatReminderThreshold(reminder.threshold)}</span>
+              <span className="text-[#f5d27d]">Stored as durable in-app reminder state.</span>
+              <button
+                type="button"
+                onClick={() => onDismissReminder(reminder)}
+                className="ml-auto cursor-pointer font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                Dismiss reminder
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[150px]">
           {isExpired || isClosed ? (
@@ -377,19 +409,18 @@ function SubscriptionCard({ shiftPostCount, subscription, onUpgrade, upgradeLoad
 export default function HiringDashboard() {
   const { user, profile } = useAuth();
   const { shifts, loading: shiftsLoading } = useShifts();
-  const { openings, loading: openingsLoading } = useOpenings();
   const { companies, loading: companiesLoading } = useCompanies();
   const { workers, loading: workersLoading } = useWorkers();
   const { count: shiftPostCount } = useShiftPostCount();
   const { subscription } = useSubscription();
   const subscriptionCheckout = useCreateSubscriptionCheckout();
+  const renewOpeningRemote = useRenewOpening();
+  const closeOpeningRemote = useCloseOpening();
+  const closeShiftRemote = useCloseShift();
+  const dismissPostingReminder = useDismissPostingReminder();
   const [lifecycleOverrides, setLifecycleOverrides] = useState(() => readLifecycleOverrides());
   const [lifecycleMessage, setLifecycleMessage] = useState('');
-
-  const lifecycleData = useMemo(
-    () => applyLifecycleOverrides(openings, shifts, lifecycleOverrides),
-    [openings, shifts, lifecycleOverrides]
-  );
+  const [dismissedReminderIds, setDismissedReminderIds] = useState([]);
 
   // Find current company profile. The underlying schema still uses restaurant ids.
   const currentCompany = useMemo(() => {
@@ -399,6 +430,32 @@ export default function HiringDashboard() {
     }
     return null;
   }, [user, profile, companies]);
+
+  const {
+    openings: hiringOpenings,
+    reminders,
+    loading: hiringLifecycleLoading,
+  } = useHiringLifecycleData(currentCompany?.id);
+
+  const visibleReminders = useMemo(
+    () => reminders.filter((reminder) => !dismissedReminderIds.includes(reminder.id)),
+    [reminders, dismissedReminderIds]
+  );
+
+  const reminderByOpeningId = useMemo(() => {
+    const map = {};
+    visibleReminders
+      .filter((reminder) => reminder.postingType === 'opening')
+      .forEach((reminder) => {
+        if (!map[reminder.postingId]) map[reminder.postingId] = reminder;
+      });
+    return map;
+  }, [visibleReminders]);
+
+  const lifecycleData = useMemo(
+    () => applyLifecycleOverrides(hiringOpenings, shifts, lifecycleOverrides),
+    [hiringOpenings, shifts, lifecycleOverrides]
+  );
 
   // Build worker lookup
   const workerMap = useMemo(() => {
@@ -480,7 +537,15 @@ export default function HiringDashboard() {
     writeLifecycleOverrides(next);
   };
 
-  const handleRenewOpening = (opening) => {
+  const handleRenewOpening = async (opening) => {
+    if (profile && !profile.is_demo) {
+      const updated = await renewOpeningRemote.mutate(opening.id);
+      if (!updated) {
+        setLifecycleMessage(renewOpeningRemote.error?.message || 'Could not renew this job.');
+        return;
+      }
+    }
+
     const nextOpening = renewOpening(opening);
     saveOverrides({
       ...lifecycleOverrides,
@@ -495,7 +560,15 @@ export default function HiringDashboard() {
     setLifecycleMessage(formatRenewedUntil(nextOpening.expiresAt));
   };
 
-  const handleCloseOpening = (opening) => {
+  const handleCloseOpening = async (opening) => {
+    if (profile && !profile.is_demo) {
+      const updated = await closeOpeningRemote.mutate(opening.id);
+      if (!updated) {
+        setLifecycleMessage(closeOpeningRemote.error?.message || 'Could not close this job.');
+        return;
+      }
+    }
+
     saveOverrides({
       ...lifecycleOverrides,
       openings: {
@@ -506,10 +579,18 @@ export default function HiringDashboard() {
         },
       },
     });
-    setLifecycleMessage('Job closed in this local demo session.');
+    setLifecycleMessage(profile?.is_demo ? 'Job closed in this local demo session.' : 'Job closed.');
   };
 
-  const handleCloseShift = (shift) => {
+  const handleCloseShift = async (shift) => {
+    if (profile && !profile.is_demo) {
+      const updated = await closeShiftRemote.mutate(shift.id);
+      if (!updated) {
+        setLifecycleMessage(closeShiftRemote.error?.message || 'Could not close this event shift.');
+        return;
+      }
+    }
+
     saveOverrides({
       ...lifecycleOverrides,
       shifts: {
@@ -520,10 +601,22 @@ export default function HiringDashboard() {
         },
       },
     });
-    setLifecycleMessage('Event shift closed in this local demo session.');
+    setLifecycleMessage(profile?.is_demo ? 'Event shift closed in this local demo session.' : 'Event shift closed.');
   };
 
-  const loading = shiftsLoading || openingsLoading || companiesLoading || workersLoading;
+  const handleDismissReminder = async (reminder) => {
+    if (profile && !profile.is_demo) {
+      const dismissed = await dismissPostingReminder.mutate(reminder.id);
+      if (!dismissed) {
+        setLifecycleMessage(dismissPostingReminder.error?.message || 'Could not dismiss this reminder.');
+        return;
+      }
+    }
+    setDismissedReminderIds((ids) => [...ids, reminder.id]);
+    setLifecycleMessage('Reminder dismissed.');
+  };
+
+  const loading = shiftsLoading || hiringLifecycleLoading || companiesLoading || workersLoading;
 
   if (loading) {
     return <LoadingSpinner message="Loading your dashboard..." />;
@@ -630,7 +723,9 @@ export default function HiringDashboard() {
                 Needs attention
               </h2>
               <p className="text-sm text-text-secondary">
-                Local demo reminders appear here when postings are expiring or have passed.
+                {profile?.is_demo
+                  ? 'Local demo reminders appear here when postings are expiring or have passed.'
+                  : 'Durable in-app reminders appear here when postings are expiring or have passed.'}
               </p>
             </div>
             {attentionCount > 0 && (
@@ -652,6 +747,8 @@ export default function HiringDashboard() {
                 <AttentionOpeningCard
                   key={opening.id}
                   opening={opening}
+                  reminder={reminderByOpeningId[opening.id]}
+                  onDismissReminder={handleDismissReminder}
                   onRenew={handleRenewOpening}
                   onClose={handleCloseOpening}
                 />
@@ -660,6 +757,8 @@ export default function HiringDashboard() {
                 <AttentionOpeningCard
                   key={opening.id}
                   opening={opening}
+                  reminder={reminderByOpeningId[opening.id]}
+                  onDismissReminder={handleDismissReminder}
                   onRenew={handleRenewOpening}
                   onClose={handleCloseOpening}
                 />
@@ -694,6 +793,8 @@ export default function HiringDashboard() {
                     <AttentionOpeningCard
                       key={opening.id}
                       opening={opening}
+                      reminder={reminderByOpeningId[opening.id]}
+                      onDismissReminder={handleDismissReminder}
                       onRenew={handleRenewOpening}
                       onClose={handleCloseOpening}
                     />

@@ -52,9 +52,17 @@ function transformRestaurant(r) {
     ratingCount: r.rating_count ?? 0,
     openings:
       r.openings?.map((o) => ({
+        id: o.id,
         role: o.role,
         payRange: o.pay_range,
         urgency: o.urgency,
+        isActive: o.is_active,
+        createdAt: o.created_at,
+        expiresAt: o.expires_at,
+        renewedAt: o.renewed_at,
+        closedAt: o.closed_at,
+        repostedFromId: o.reposted_from_id,
+        lifecycleVersion: o.lifecycle_version,
       })) || [],
   };
 }
@@ -74,9 +82,81 @@ function transformShift(s) {
     isUrgent: s.is_urgent ?? false,
     city: s.city,
     description: s.description,
+    expiresAt: combineShiftEnd(s.date, s.end_time),
+    closedAt: s.closed_at,
+    repostedFromId: s.reposted_from_id,
     requirements: [],
     feedback: null,
   };
+}
+
+function transformOpening(o) {
+  return {
+    id: o.id,
+    role: o.role,
+    payRange: o.pay_range,
+    urgency: o.urgency,
+    isActive: o.is_active,
+    createdAt: o.created_at,
+    expiresAt: o.expires_at,
+    renewedAt: o.renewed_at,
+    closedAt: o.closed_at,
+    repostedFromId: o.reposted_from_id,
+    lifecycleVersion: o.lifecycle_version,
+    restaurantId: o.restaurant_id || o.restaurants?.id,
+    restaurantName: o.restaurants?.name,
+    restaurantPhoto: o.restaurants?.photo_url,
+    restaurantCity: o.restaurants?.city,
+    restaurantRating: o.restaurants?.rating_average ? Number(o.restaurants.rating_average) : 0,
+    restaurantRatingCount: o.restaurants?.rating_count ?? 0,
+  };
+}
+
+function transformPostingReminder(r) {
+  return {
+    id: r.id,
+    postingType: r.posting_type,
+    postingId: r.posting_id,
+    restaurantId: r.restaurant_id,
+    recipientProfileId: r.recipient_profile_id,
+    recipientRole: r.recipient_role,
+    threshold: r.threshold,
+    channel: r.channel,
+    status: r.status,
+    scheduledFor: r.scheduled_for,
+    sentAt: r.sent_at,
+    dismissedAt: r.dismissed_at,
+    errorMessage: r.error_message,
+    lifecycleVersion: r.lifecycle_version,
+    createdAt: r.created_at,
+  };
+}
+
+function combineShiftEnd(date, endTime) {
+  if (!date || !endTime) return null;
+  return new Date(`${date}T${endTime}`).toISOString();
+}
+
+async function fetchOpeningRowById(id) {
+  const { data, error } = await supabase
+    .from('openings')
+    .select(OPENING_SELECT)
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+async function fetchShiftRowById(id) {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select(SHIFT_SELECT)
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -95,13 +175,15 @@ const WORKER_SELECT = `
 const RESTAURANT_SELECT = `
   *,
   restaurant_hiring_roles(role),
-  openings(role, pay_range, urgency, is_active)
+  openings(id, role, pay_range, urgency, is_active, created_at, expires_at, renewed_at, closed_at, reposted_from_id, lifecycle_version)
 `;
 
 const SHIFT_SELECT = `
   *,
   restaurants(name)
 `;
+
+const OPENING_SELECT = '*, restaurants(id, name, photo_url, city, rating_average, rating_count)';
 
 export async function fetchWorkers() {
   if (!supabase) return { data: [], error: null, fromMock: true };
@@ -192,23 +274,44 @@ export async function fetchOpenings() {
 
   const { data, error } = await supabase
     .from('openings')
-    .select('*, restaurants(id, name, photo_url, city, rating_average, rating_count)')
+    .select(OPENING_SELECT)
     .eq('is_active', true)
+    .is('closed_at', null)
+    .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 
   if (error) return { data: [], error };
-  return { data: data.map(o => ({
-    id: o.id,
-    role: o.role,
-    payRange: o.pay_range,
-    urgency: o.urgency,
-    restaurantId: o.restaurants?.id,
-    restaurantName: o.restaurants?.name,
-    restaurantPhoto: o.restaurants?.photo_url,
-    restaurantCity: o.restaurants?.city,
-    restaurantRating: o.restaurants?.rating_average ? Number(o.restaurants.rating_average) : 0,
-    restaurantRatingCount: o.restaurants?.rating_count ?? 0,
-  })), error: null };
+  return { data: data.map(transformOpening), error: null };
+}
+
+export async function fetchHiringOpenings(restaurantId) {
+  if (!supabase) return { data: [], error: null, fromMock: true };
+  if (!restaurantId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('openings')
+    .select(OPENING_SELECT)
+    .eq('restaurant_id', restaurantId)
+    .order('expires_at', { ascending: true });
+
+  if (error) return { data: [], error };
+  return { data: data.map(transformOpening), error: null };
+}
+
+export async function fetchPostingReminders(restaurantId) {
+  if (!supabase) return { data: [], error: null, fromMock: true };
+  if (!restaurantId) return { data: [], error: null };
+
+  const { data, error } = await supabase
+    .from('posting_reminders')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .eq('recipient_role', 'hiring_team')
+    .neq('status', 'dismissed')
+    .order('scheduled_for', { ascending: false });
+
+  if (error) return { data: [], error };
+  return { data: data.map(transformPostingReminder), error: null };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -254,6 +357,53 @@ export async function createOpening({ role, payRate, isUrgent }) {
 
   if (error) return { data: null, error };
   return { data, error: null };
+}
+
+export async function renewOpeningById(openingId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('renew_opening', {
+    p_opening_id: openingId,
+  });
+
+  if (error) return { data: null, error };
+  const joined = await fetchOpeningRowById(data.id);
+  return { data: transformOpening(joined || data), error: null };
+}
+
+export async function closeOpeningById(openingId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('close_opening', {
+    p_opening_id: openingId,
+  });
+
+  if (error) return { data: null, error };
+  const joined = await fetchOpeningRowById(data.id);
+  return { data: transformOpening(joined || data), error: null };
+}
+
+export async function closeShiftById(shiftId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('close_shift', {
+    p_shift_id: shiftId,
+  });
+
+  if (error) return { data: null, error };
+  const joined = await fetchShiftRowById(data.id);
+  return { data: transformShift(joined || data), error: null };
+}
+
+export async function dismissPostingReminderById(reminderId) {
+  if (!supabase) return { data: null, error: { message: 'Supabase not configured' } };
+
+  const { data, error } = await supabase.rpc('dismiss_posting_reminder', {
+    p_reminder_id: reminderId,
+  });
+
+  if (error) return { data: null, error };
+  return { data: transformPostingReminder(data), error: null };
 }
 
 export async function claimShift(shiftId) {

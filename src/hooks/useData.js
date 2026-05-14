@@ -7,9 +7,15 @@ import {
   fetchShifts,
   fetchShiftById,
   fetchOpenings,
+  fetchHiringOpenings,
+  fetchPostingReminders,
   createShift,
   createOpening,
   claimShift,
+  renewOpeningById,
+  closeOpeningById,
+  closeShiftById,
+  dismissPostingReminderById,
   getShiftPostCount,
   createReview,
   fetchSubscription,
@@ -33,7 +39,8 @@ import {
 // Generic async data hook
 // ────────────────────────────────────────────────────────────
 
-function useQuery(queryFn, fallbackData, deps = []) {
+function useQuery(queryFn, fallbackData, deps = [], options = {}) {
+  const { fallbackOnEmpty = true } = options;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +59,7 @@ function useQuery(queryFn, fallbackData, deps = []) {
         // Use mock data as fallback
         setData(fallbackData);
         setError(result.error);
-      } else if (result.data && (Array.isArray(result.data) ? result.data.length > 0 : true)) {
+      } else if (result.data && (Array.isArray(result.data) ? result.data.length > 0 || !fallbackOnEmpty : true)) {
         setData(result.data);
       } else {
         // Empty result from Supabase — fall back to mock
@@ -129,8 +136,10 @@ export function useShifts() {
     prepareDemoShifts(mockShifts),
     readLifecycleOverrides()
   ).shifts;
-  const { data, loading, error } = useQuery(fetchShifts, fallback);
-  return { shifts: data || [], loading, error };
+  const { data, loading, error } = useQuery(fetchShifts, fallback, [], { fallbackOnEmpty: false });
+  // Keep demo close/repost overrides visible across the app when Supabase is not configured.
+  const lifecycled = applyLifecycleOverrides([], data || [], readLifecycleOverrides()).shifts;
+  return { shifts: lifecycled, loading, error };
 }
 
 export function useShift(id) {
@@ -157,8 +166,9 @@ export function useOpenings() {
     prepareDemoShifts(mockShifts),
     readLifecycleOverrides()
   ).openings;
-  const { data, loading, error } = useQuery(fetchOpenings, fallback);
-  return { openings: data || [], loading, error };
+  const { data, loading, error } = useQuery(fetchOpenings, fallback, [], { fallbackOnEmpty: false });
+  const lifecycled = applyLifecycleOverrides(data || [], [], readLifecycleOverrides()).openings;
+  return { openings: lifecycled, loading, error };
 }
 
 export function useDemoLifecycleData() {
@@ -168,6 +178,43 @@ export function useDemoLifecycleData() {
     prepareDemoShifts(mockShifts),
     overrides
   );
+}
+
+export function useHiringLifecycleData(restaurantId) {
+  const fallbackData = applyLifecycleOverrides(
+    buildDemoOpenings(mockRestaurants),
+    prepareDemoShifts(mockShifts),
+    readLifecycleOverrides()
+  );
+  const fallbackOpenings = fallbackData.openings.filter(
+    (opening) => String(opening.restaurantId) === String(restaurantId)
+  );
+
+  const openingsQuery = useQuery(
+    () => fetchHiringOpenings(restaurantId),
+    fallbackOpenings,
+    [restaurantId],
+    { fallbackOnEmpty: false }
+  );
+  const remindersQuery = useQuery(
+    () => fetchPostingReminders(restaurantId),
+    [],
+    [restaurantId],
+    { fallbackOnEmpty: false }
+  );
+
+  const openings = applyLifecycleOverrides(
+    openingsQuery.data || [],
+    [],
+    readLifecycleOverrides()
+  ).openings;
+
+  return {
+    openings,
+    reminders: remindersQuery.data || [],
+    loading: openingsQuery.loading || remindersQuery.loading,
+    error: openingsQuery.error || remindersQuery.error,
+  };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -201,6 +248,82 @@ export function useCreateOpening() {
     setLoading(true);
     setError(null);
     const result = await createOpening(openingData);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useRenewOpening() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (openingId) => {
+    setLoading(true);
+    setError(null);
+    const result = await renewOpeningById(openingId);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useCloseOpening() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (openingId) => {
+    setLoading(true);
+    setError(null);
+    const result = await closeOpeningById(openingId);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useCloseShift() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (shiftId) => {
+    setLoading(true);
+    setError(null);
+    const result = await closeShiftById(shiftId);
+    setLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return null;
+    }
+    return result.data;
+  };
+
+  return { mutate, loading, error };
+}
+
+export function useDismissPostingReminder() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const mutate = async (reminderId) => {
+    setLoading(true);
+    setError(null);
+    const result = await dismissPostingReminderById(reminderId);
     setLoading(false);
     if (result.error) {
       setError(result.error);
