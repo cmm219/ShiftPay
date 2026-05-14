@@ -2,7 +2,7 @@
   "name": "shiftpay",
   "private": true,
   "version": "0.0.0",
-  "description": "Hospitality hiring marketplace portfolio MVP built with React, Supabase, Stripe, and Playwright.",
+  "description": "Hospitality hiring marketplace portfolio MVP built with React, Supabase-ready data access, and Playwright.",
   "type": "module",
   "scripts": {
     "dev": "vite",
