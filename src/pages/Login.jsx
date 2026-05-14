@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const ROLE_TABS = [
   { id: 'worker', label: 'Worker' },
-  { id: 'restaurant', label: 'Restaurant' },
+  { id: 'restaurant', label: 'Hiring team' },
 ];
 
 const METHOD_TABS = [
@@ -34,7 +34,7 @@ export default function Login() {
   const otpInputRef = useRef(null);
   const cooldownRef = useRef(null);
 
-  const { user, profile, signIn, signInWithPhone, verifyOtp } = useAuth();
+  const { user, profile, signIn, signInWithPhone, verifyOtp, signInDemo } = useAuth();
   const navigate = useNavigate();
 
   // Once user and profile are loaded after sign-in, redirect by role
@@ -174,6 +174,11 @@ export default function Login() {
     setError('');
   };
 
+  const handleDemoSignIn = (role) => {
+    signInDemo(role);
+    navigate(role === 'restaurant' ? '/dashboard/restaurant' : '/dashboard/worker');
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary px-4 font-body">
       <div className="animate-fade-in w-full max-w-md">
@@ -207,6 +212,28 @@ export default function Login() {
                 {tab.label}
               </button>
             ))}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-accent/25 bg-accent-soft p-4">
+            <div className="mb-3 text-sm text-[#f5d27d]">
+              Demo access uses seeded local data only. No real account, messaging, hiring outreach, or payments are created.
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('restaurant')}
+                className="cursor-pointer rounded-md bg-accent px-3 py-2 text-sm font-semibold text-black transition-colors hover:bg-accent-hover"
+              >
+                Demo hiring team
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoSignIn('worker')}
+                className="cursor-pointer rounded-md border border-accent/35 bg-transparent px-3 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent-soft"
+              >
+                Demo worker
+              </button>
+            </div>
           </div>
 
           {/* Login method toggle */}
@@ -422,7 +449,7 @@ export default function Login() {
               to={signupPath}
               className="font-medium text-accent hover:underline"
             >
-              Sign up as a {activeTab === 'worker' ? 'Worker' : 'Restaurant'}
+            Sign up as a {activeTab === 'worker' ? 'Worker' : 'Hiring Team'}
             </Link>
           </p>
         </div>

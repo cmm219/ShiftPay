@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 // Constants
 // ---------------------------------------------------------------------------
 
-const STEP_LABELS = ['Restaurant Info', 'Roles', 'Account'];
+const STEP_LABELS = ['Hiring Profile', 'Roles', 'Account'];
 const TOTAL_STEPS = STEP_LABELS.length;
 
 const RESTAURANT_TYPES = [
@@ -137,14 +137,14 @@ function StepRestaurantInfo({ formData, updateField }) {
   return (
     <div className="space-y-5 animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">
-        Tell us about your restaurant
+        Tell us about your hiring team
       </h2>
       <p className="text-text-secondary text-sm mb-4">
         We'll use this to connect you with qualified staff in your area.
       </p>
 
       <div>
-        <Label htmlFor="name">Restaurant Name</Label>
+        <Label htmlFor="name">Company or Venue Name</Label>
         <input
           id="name"
           type="text"
@@ -163,7 +163,7 @@ function StepRestaurantInfo({ formData, updateField }) {
           value={formData.type}
           onChange={(e) => updateField('type', e.target.value)}
         >
-          <option value="">Select restaurant type</option>
+          <option value="">Select company or venue type</option>
           {RESTAURANT_TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
@@ -328,8 +328,8 @@ function StepAccount({ formData, updateField, password, setPassword, confirmPass
 function validateStep(step, formData, { password, confirmPassword } = {}) {
   switch (step) {
     case 1:
-      if (!formData.name.trim()) return 'Please enter the restaurant name.';
-      if (!formData.type) return 'Please select a restaurant type.';
+      if (!formData.name.trim()) return 'Please enter the company or venue name.';
+      if (!formData.type) return 'Please select a company or venue type.';
       if (!formData.city) return 'Please select a city.';
       if (!formData.employeeCount) return 'Please select an employee count.';
       return null;
@@ -552,7 +552,7 @@ export default function RestaurantSignup() {
       {/* Success toast */}
       {showToast && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-success text-black font-semibold px-6 py-3 rounded-lg shadow-lg animate-slide-up z-50">
-          Restaurant registered! Redirecting...
+          Hiring profile registered! Redirecting...
         </div>
       )}
     </div>

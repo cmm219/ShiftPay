@@ -50,7 +50,7 @@ export const DEMAND_STATUSES = {
     id: 'in_the_weeds',
     label: 'In the Weeds',
     color: '#F59E0B',
-    description: 'High demand — restaurants are actively looking for staff.',
+    description: 'High demand — hiring teams are actively looking for staff.',
   },
   double_sat: {
     id: 'double_sat',

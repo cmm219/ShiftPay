@@ -12,7 +12,7 @@ test.describe('Browse Workers (/browse)', () => {
   });
 
   test('shows worker count', async ({ page }) => {
-    await expect(page.locator('text=/Browsing 10 seeded workers and 11 openings/')).toBeVisible();
+    await expect(page.locator('text=/Browsing 10 seeded workers and 9 active jobs/')).toBeVisible();
     await expect(page.getByRole('button', { name: /Workers\s+10/ })).toBeVisible();
   });
 

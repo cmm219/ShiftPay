@@ -22,6 +22,12 @@ import {
 import { workers as mockWorkers } from '../data/workers';
 import { restaurants as mockRestaurants } from '../data/restaurants';
 import { shifts as mockShifts } from '../data/shifts';
+import {
+  applyLifecycleOverrides,
+  buildDemoOpenings,
+  prepareDemoShifts,
+  readLifecycleOverrides,
+} from '../utils/postingLifecycle';
 
 // ────────────────────────────────────────────────────────────
 // Generic async data hook
@@ -108,12 +114,21 @@ export function useRestaurant(id) {
 }
 
 export function useShifts() {
-  const { data, loading, error } = useQuery(fetchShifts, mockShifts);
+  const fallback = applyLifecycleOverrides(
+    buildDemoOpenings(mockRestaurants),
+    prepareDemoShifts(mockShifts),
+    readLifecycleOverrides()
+  ).shifts;
+  const { data, loading, error } = useQuery(fetchShifts, fallback);
   return { shifts: data || [], loading, error };
 }
 
 export function useShift(id) {
-  const mockShift = mockShifts.find(
+  const mockShift = applyLifecycleOverrides(
+    buildDemoOpenings(mockRestaurants),
+    prepareDemoShifts(mockShifts),
+    readLifecycleOverrides()
+  ).shifts.find(
     (s) => String(s.id) === String(id)
   );
 
@@ -126,25 +141,23 @@ export function useShift(id) {
   return { shift: data, loading, error };
 }
 
-// Build mock openings from mock restaurants for fallback
-const mockOpenings = mockRestaurants.flatMap((r) =>
-  (r.openings || []).map((o, i) => ({
-    id: `${r.id}-${i}`,
-    role: o.role,
-    payRange: o.payRange,
-    urgency: o.urgency,
-    restaurantId: r.id,
-    restaurantName: r.name,
-    restaurantPhoto: r.photoUrl,
-    restaurantCity: r.city,
-    restaurantRating: r.ratingAverage,
-    restaurantRatingCount: r.ratingCount,
-  }))
-);
-
 export function useOpenings() {
-  const { data, loading, error } = useQuery(fetchOpenings, mockOpenings);
+  const fallback = applyLifecycleOverrides(
+    buildDemoOpenings(mockRestaurants),
+    prepareDemoShifts(mockShifts),
+    readLifecycleOverrides()
+  ).openings;
+  const { data, loading, error } = useQuery(fetchOpenings, fallback);
   return { openings: data || [], loading, error };
+}
+
+export function useDemoLifecycleData() {
+  const overrides = readLifecycleOverrides();
+  return applyLifecycleOverrides(
+    buildDemoOpenings(mockRestaurants),
+    prepareDemoShifts(mockShifts),
+    overrides
+  );
 }
 
 // ────────────────────────────────────────────────────────────

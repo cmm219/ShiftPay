@@ -157,7 +157,7 @@ function StepBasics({ formData, updateField, password, setPassword, confirmPassw
         Let's get started
       </h2>
       <p className="text-text-secondary text-sm mb-4">
-        Tell us a bit about yourself so restaurants can find you.
+        Tell us a bit about yourself so hiring teams can find you.
       </p>
 
       <div>
@@ -313,7 +313,7 @@ function StepCerts({ formData, updateField }) {
     <div className="animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">Certifications</h2>
       <p className="text-text-secondary text-sm mb-6">
-        Let restaurants know what you're certified in.
+        Let hiring teams know what you're certified in.
       </p>
 
       <div className="space-y-4">
@@ -447,7 +447,7 @@ function StepExperience({ formData, updateField }) {
 
       {/* Restaurant types */}
       <div>
-        <Label>Restaurant Types</Label>
+        <Label>Company / Venue Types</Label>
         <div className="flex flex-wrap gap-3 mt-1">
           {RESTAURANT_TYPES.map((type) => {
             const selected = formData.restaurantTypes.includes(type);
@@ -596,7 +596,7 @@ function StepPay({ formData, updateField }) {
             value={formData.experienceYears ? `${formData.experienceYears} years` : '\u2014'}
           />
           <SummaryRow
-            label="Restaurant Types"
+            label="Company / Venue Types"
             value={formData.restaurantTypes.length ? formData.restaurantTypes.join(', ') : '\u2014'}
           />
           <SummaryRow

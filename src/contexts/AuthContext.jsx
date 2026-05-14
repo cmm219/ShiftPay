@@ -2,9 +2,38 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { AuthContext } from './authContextValue'
 
+const DEMO_SESSION_KEY = 'shiftpay-demo-session'
+
+function readDemoSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    return JSON.parse(window.localStorage.getItem(DEMO_SESSION_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+
+function buildDemoSession(role) {
+  const isRestaurant = role === 'restaurant'
+  return {
+    user: {
+      id: `demo-${role}`,
+      email: isRestaurant ? 'demo.hiring@shiftpay.local' : 'demo.worker@shiftpay.local',
+    },
+    profile: {
+      id: `demo-${role}`,
+      role,
+      city: isRestaurant ? 'Tampa' : 'Miami',
+      restaurant_id: isRestaurant ? 1 : null,
+      worker_id: isRestaurant ? null : 1,
+      is_demo: true,
+    },
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [user, setUser] = useState(() => readDemoSession()?.user || null)
+  const [profile, setProfile] = useState(() => readDemoSession()?.profile || null)
   const [loading, setLoading] = useState(() => !!supabase)
 
   const fetchProfile = useCallback(async (userId) => {
@@ -108,13 +137,28 @@ export function AuthProvider({ children }) {
   }
 
   const signOut = async () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(DEMO_SESSION_KEY)
+    }
+    setUser(null)
+    setProfile(null)
     if (!supabase) return { error: null }
     const { error } = await supabase.auth.signOut()
     return { error }
   }
 
+  const signInDemo = (role) => {
+    const session = buildDemoSession(role)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(session))
+    }
+    setUser(session.user)
+    setProfile(session.profile)
+    return session
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, signInWithPhone, verifyOtp }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, signInWithPhone, verifyOtp, signInDemo }}>
       {children}
     </AuthContext.Provider>
   )

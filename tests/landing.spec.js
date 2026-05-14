@@ -8,7 +8,7 @@ test.describe('Landing Page (/)', () => {
   test('renders hero headline', async ({ page }) => {
     await expect(
       page.getByRole('heading', {
-        name: /The shift staffing flow for restaurants/i,
+        name: /The restaurant hiring flow for operators/i,
       }),
     ).toBeVisible();
   });
@@ -44,7 +44,7 @@ test.describe('Landing Page (/)', () => {
 
   test('demo banner and seed counts are truthful', async ({ page }) => {
     await expect(page.locator('text=Demo mode')).toBeVisible();
-    await expect(page.locator('text=/10 mock workers.*11 openings seeded/')).toBeVisible();
+    await expect(page.locator('text=/10 mock workers.*9 active jobs seeded/')).toBeVisible();
   });
 
   test('mobile hamburger menu opens', async ({ page }) => {

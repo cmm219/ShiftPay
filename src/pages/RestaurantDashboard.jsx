@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   useShifts,
+  useOpenings,
   useRestaurants,
   useWorkers,
   useShiftPostCount,
@@ -13,6 +14,16 @@ import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
+import {
+  applyLifecycleOverrides,
+  closePosting,
+  formatDate as formatLifecycleDate,
+  formatRenewedUntil,
+  makeRepostParams,
+  readLifecycleOverrides,
+  renewOpening,
+  writeLifecycleOverrides,
+} from '../utils/postingLifecycle';
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -59,12 +70,14 @@ const statusColors = {
   cancelled: 'bg-danger-soft text-danger',
   open: 'bg-accent-soft text-accent',
   claimed: 'bg-warning-soft text-warning',
+  expired: 'bg-danger-soft text-danger',
+  closed: 'bg-bg-elevated text-text-muted',
 };
 
 const statusLabelsRestaurant = {
-  open: 'Posted, awaiting claims',
+  open: 'Event posted',
   claimed: 'confirmed',
-  completed: 'Shift complete',
+  completed: 'Event complete',
 };
 
 // ────────────────────────────────────────────────────────────
@@ -181,6 +194,117 @@ function EmptySection({ icon, message, cta, to }) {
   );
 }
 
+function AttentionOpeningCard({ opening, onRenew, onClose }) {
+  const isExpired = opening.lifecycleStatus === 'expired';
+  const isClosed = opening.lifecycleStatus === 'closed';
+  const isExpiring = opening.lifecycleStatus === 'expiring_soon';
+
+  return (
+    <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Badge type="role" value={opening.role} />
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+              isClosed
+                ? statusColors.closed
+                : isExpired
+                  ? statusColors.expired
+                  : isExpiring
+                    ? 'bg-warning-soft text-warning'
+                    : statusColors.open
+            }`}>
+              {isClosed ? 'Closed' : isExpired ? 'Expired' : isExpiring ? 'Expiring soon' : 'Active'}
+            </span>
+          </div>
+          <p className="font-semibold text-text-primary">{opening.restaurantName}</p>
+          <p className="text-sm text-text-secondary">
+            {opening.restaurantCity} &middot; {opening.payRange}
+          </p>
+          <p className="mt-2 text-sm text-text-muted">
+            {isExpired || isClosed
+              ? `Last visible ${formatLifecycleDate(opening.expiresAt)}`
+              : `${opening.expiryLabel}. Renew for 30 days to keep this job visible to workers.`}
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[150px]">
+          {isExpired || isClosed ? (
+            <Link to={`/post-shift?${makeRepostParams(opening, 'opening')}`}>
+              <Button variant="primary" size="sm" className="w-full min-h-[44px]">
+                Repost
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full min-h-[44px]"
+              onClick={() => onRenew(opening)}
+            >
+              Renew for 30 days
+            </Button>
+          )}
+          {!isExpired && !isClosed && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full min-h-[44px]"
+              onClick={() => onClose(opening)}
+            >
+              Close
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpiredShiftCard({ shift, onClose }) {
+  const isClosed = shift.lifecycleStatus === 'closed';
+
+  return (
+    <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Badge type="role" value={shift.role} />
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${isClosed ? statusColors.closed : statusColors.expired}`}>
+              {isClosed ? 'Closed' : 'Event shift has passed'}
+            </span>
+          </div>
+          <p className="font-semibold text-text-primary">
+            {formatDate(shift.date)} &middot; {shift.startTime} - {shift.endTime}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            {shift.city} &middot; ${shift.payRate}/hr
+          </p>
+          <p className="mt-2 text-sm text-text-muted">
+            Repost this event shift with a new future date and time.
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[150px]">
+          <Link to={`/post-shift?${makeRepostParams(shift, 'shift')}`}>
+            <Button variant="primary" size="sm" className="w-full min-h-[44px]">
+              Repost event shift
+            </Button>
+          </Link>
+          {!isClosed && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full min-h-[44px]"
+              onClick={() => onClose(shift)}
+            >
+              Close
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubscriptionCard({ shiftPostCount, subscription, onUpgrade, upgradeLoading }) {
   const FREE_LIMIT = 3;
   const remaining = Math.max(0, FREE_LIMIT - shiftPostCount);
@@ -253,11 +377,19 @@ function SubscriptionCard({ shiftPostCount, subscription, onUpgrade, upgradeLoad
 export default function RestaurantDashboard() {
   const { user, profile } = useAuth();
   const { shifts, loading: shiftsLoading } = useShifts();
+  const { openings, loading: openingsLoading } = useOpenings();
   const { restaurants, loading: restaurantsLoading } = useRestaurants();
   const { workers, loading: workersLoading } = useWorkers();
   const { count: shiftPostCount } = useShiftPostCount();
   const { subscription } = useSubscription();
   const subscriptionCheckout = useCreateSubscriptionCheckout();
+  const [lifecycleOverrides, setLifecycleOverrides] = useState(() => readLifecycleOverrides());
+  const [lifecycleMessage, setLifecycleMessage] = useState('');
+
+  const lifecycleData = useMemo(
+    () => applyLifecycleOverrides(openings, shifts, lifecycleOverrides),
+    [openings, shifts, lifecycleOverrides]
+  );
 
   // Find current restaurant
   const currentRestaurant = useMemo(() => {
@@ -277,14 +409,19 @@ export default function RestaurantDashboard() {
 
   // Filter shifts for current restaurant
   const myShifts = useMemo(() => {
-    if (!currentRestaurant || !shifts.length) return [];
-    return shifts.filter((s) => s.restaurantId === currentRestaurant.id);
-  }, [currentRestaurant, shifts]);
+    if (!currentRestaurant || !lifecycleData.shifts.length) return [];
+    return lifecycleData.shifts.filter((s) => s.restaurantId === currentRestaurant.id);
+  }, [currentRestaurant, lifecycleData.shifts]);
+
+  const myOpenings = useMemo(() => {
+    if (!currentRestaurant || !lifecycleData.openings.length) return [];
+    return lifecycleData.openings.filter((o) => o.restaurantId === currentRestaurant.id);
+  }, [currentRestaurant, lifecycleData.openings]);
 
   // Split into categories
-  const { openShifts, claimedShifts, completedShifts } = useMemo(() => {
+  const { openShifts, claimedShifts, completedShifts, expiredShifts } = useMemo(() => {
     const open = myShifts
-      .filter((s) => s.status === 'open' && isFuture(s.date))
+      .filter((s) => s.status === 'open' && s.lifecycleStatus === 'active')
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const claimed = myShifts
@@ -295,8 +432,34 @@ export default function RestaurantDashboard() {
       .filter((s) => s.status === 'completed')
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    return { openShifts: open, claimedShifts: claimed, completedShifts: completed };
+    const expired = myShifts
+      .filter((s) => s.status === 'open' && ['expired', 'closed'].includes(s.lifecycleStatus))
+      .sort((a, b) => new Date(b.expiresAt || b.date) - new Date(a.expiresAt || a.date));
+
+    return {
+      openShifts: open,
+      claimedShifts: claimed,
+      completedShifts: completed,
+      expiredShifts: expired,
+    };
   }, [myShifts]);
+
+  const { activeOpenings, expiringOpenings, expiredOpenings } = useMemo(() => {
+    const active = myOpenings
+      .filter((o) => o.lifecycleStatus === 'active')
+      .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt));
+    const expiring = myOpenings
+      .filter((o) => o.lifecycleStatus === 'expiring_soon')
+      .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt));
+    const expired = myOpenings
+      .filter((o) => ['expired', 'closed'].includes(o.lifecycleStatus))
+      .sort((a, b) => new Date(b.expiresAt) - new Date(a.expiresAt));
+    return {
+      activeOpenings: active,
+      expiringOpenings: expiring,
+      expiredOpenings: expired,
+    };
+  }, [myOpenings]);
 
   // Monthly stats
   const monthlyStats = useMemo(() => {
@@ -312,13 +475,61 @@ export default function RestaurantDashboard() {
     return { fills, totalSpend };
   }, [myShifts]);
 
-  const loading = shiftsLoading || restaurantsLoading || workersLoading;
+  const saveOverrides = (next) => {
+    setLifecycleOverrides(next);
+    writeLifecycleOverrides(next);
+  };
+
+  const handleRenewOpening = (opening) => {
+    const nextOpening = renewOpening(opening);
+    saveOverrides({
+      ...lifecycleOverrides,
+      openings: {
+        ...(lifecycleOverrides.openings || {}),
+        [opening.id]: {
+          ...(lifecycleOverrides.openings?.[opening.id] || {}),
+          ...nextOpening,
+        },
+      },
+    });
+    setLifecycleMessage(formatRenewedUntil(nextOpening.expiresAt));
+  };
+
+  const handleCloseOpening = (opening) => {
+    saveOverrides({
+      ...lifecycleOverrides,
+      openings: {
+        ...(lifecycleOverrides.openings || {}),
+        [opening.id]: {
+          ...(lifecycleOverrides.openings?.[opening.id] || {}),
+          ...closePosting(),
+        },
+      },
+    });
+    setLifecycleMessage('Job closed in this local demo session.');
+  };
+
+  const handleCloseShift = (shift) => {
+    saveOverrides({
+      ...lifecycleOverrides,
+      shifts: {
+        ...(lifecycleOverrides.shifts || {}),
+        [shift.id]: {
+          ...(lifecycleOverrides.shifts?.[shift.id] || {}),
+          ...closePosting(),
+        },
+      },
+    });
+    setLifecycleMessage('Event shift closed in this local demo session.');
+  };
+
+  const loading = shiftsLoading || openingsLoading || restaurantsLoading || workersLoading;
 
   if (loading) {
     return <LoadingSpinner message="Loading your dashboard..." />;
   }
 
-  // ── Empty state: no restaurant profile ──
+  // ── Empty state: no hiring profile ──
   if (!currentRestaurant) {
     return (
       <div className="min-h-screen bg-bg-primary font-body">
@@ -329,11 +540,11 @@ export default function RestaurantDashboard() {
               Welcome to ShiftPay!
             </h1>
             <p className="text-text-secondary mb-8 max-w-md mx-auto">
-              Post your first shift to connect with qualified workers in your area.
+              Create your hiring profile to post long-term jobs and optional event shifts.
             </p>
             <Link to="/restaurant/signup">
               <Button variant="primary" size="lg" className="min-h-[44px]">
-                Complete Your Profile
+                Complete Hiring Profile
               </Button>
             </Link>
           </div>
@@ -342,7 +553,8 @@ export default function RestaurantDashboard() {
     );
   }
 
-  const activeCount = openShifts.length + claimedShifts.length;
+  const attentionCount = expiringOpenings.length + expiredOpenings.length + expiredShifts.length;
+  const activeCount = openShifts.length + claimedShifts.length + activeOpenings.length + expiringOpenings.length;
 
   return (
     <div className="min-h-screen bg-bg-primary font-body">
@@ -353,41 +565,41 @@ export default function RestaurantDashboard() {
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
               {currentRestaurant.name}
             </h1>
-            <p className="text-text-secondary mt-1">Restaurant Dashboard</p>
+            <p className="text-text-secondary mt-1">Hiring Dashboard</p>
           </div>
           <div className="flex items-center gap-3">
             <Link to={`/restaurant/${currentRestaurant.id}`}>
               <Button variant="secondary" size="sm" className="min-h-[44px]">
-                View Public Profile
+                View Company Profile
               </Button>
             </Link>
             <Link to="/post-shift">
               <Button variant="primary" size="sm" className="min-h-[44px]">
-                Post a Shift
+                Post a Job
               </Button>
             </Link>
           </div>
         </div>
 
-        {/* ── Hero: Active Shifts Summary ── */}
+        {/* ── Hero: Active postings summary ── */}
         <section className="mb-8" aria-live="polite">
           {activeCount > 0 ? (
             <div className="bg-bg-surface rounded-xl border border-accent/30 p-6 sm:p-8 animate-fade-in">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <p className="text-accent text-sm font-semibold uppercase tracking-wide mb-2">
-                    Active Shifts
+                    Active postings
                   </p>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
-                    {activeCount} shift{activeCount !== 1 ? 's' : ''} active
+                    {activeCount} active posting{activeCount !== 1 ? 's' : ''}
                   </h2>
                   <p className="text-text-secondary mt-1">
-                    {openShifts.length} posted &middot; {claimedShifts.length} claimed
+                    {activeOpenings.length + expiringOpenings.length} jobs visible &middot; {openShifts.length} event shifts posted &middot; {claimedShifts.length} event shifts claimed
                   </p>
                 </div>
                 <Link to="/post-shift">
                   <Button variant="primary" size="md" className="min-h-[44px]">
-                    Post Another Shift
+                    Post Another Job
                   </Button>
                 </Link>
               </div>
@@ -396,28 +608,113 @@ export default function RestaurantDashboard() {
             <div className="bg-bg-surface rounded-xl border border-border-subtle p-8 text-center animate-fade-in">
               <div className="text-4xl mb-3">&#128221;</div>
               <h2 className="font-display text-xl font-semibold text-text-primary mb-2">
-                Post your first shift
+                Post your first job
               </h2>
               <p className="text-text-secondary mb-6 max-w-md mx-auto">
-                Create a shift posting and connect with qualified workers ready to fill it.
+                Start with a long-term role. Event-shift coverage is available for banquet, catering, or pop-up work.
               </p>
               <Link to="/post-shift">
                 <Button variant="primary" size="md" className="min-h-[44px]">
-                  Post a Shift
+                  Post a Job
                 </Button>
               </Link>
             </div>
           )}
         </section>
 
+        {/* ── Needs attention ── */}
+        <section className="mb-8">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="font-display text-xl font-semibold text-text-primary">
+                Needs attention
+              </h2>
+              <p className="text-sm text-text-secondary">
+                Local demo reminders appear here when postings are expiring or have passed.
+              </p>
+            </div>
+            {attentionCount > 0 && (
+              <span className="rounded-full bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
+                {attentionCount} item{attentionCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {lifecycleMessage && (
+            <div className="mb-3 rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-sm text-success">
+              {lifecycleMessage}
+            </div>
+          )}
+
+          {attentionCount > 0 ? (
+            <div className="grid gap-3" aria-live="polite">
+              {expiringOpenings.map((opening) => (
+                <AttentionOpeningCard
+                  key={opening.id}
+                  opening={opening}
+                  onRenew={handleRenewOpening}
+                  onClose={handleCloseOpening}
+                />
+              ))}
+              {expiredOpenings.map((opening) => (
+                <AttentionOpeningCard
+                  key={opening.id}
+                  opening={opening}
+                  onRenew={handleRenewOpening}
+                  onClose={handleCloseOpening}
+                />
+              ))}
+              {expiredShifts.map((shift) => (
+                <ExpiredShiftCard
+                  key={shift.id}
+                  shift={shift}
+                  onClose={handleCloseShift}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border-subtle bg-bg-surface px-5 py-6 text-sm text-text-muted">
+              No postings need attention.
+            </div>
+          )}
+        </section>
+
         {/* ── Desktop two-column layout ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Left column: Shifts (2/3 width) */}
+          {/* Left column: postings (2/3 width) */}
           <div className="md:col-span-2 space-y-8">
-            {/* Open Shifts */}
+            {/* Long-term Jobs */}
             <section>
               <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-                Open Shifts
+                Long-term Jobs
+              </h2>
+              {activeOpenings.length > 0 ? (
+                <div className="grid gap-4" aria-live="polite">
+                  {activeOpenings.map((opening) => (
+                    <AttentionOpeningCard
+                      key={opening.id}
+                      opening={opening}
+                      onRenew={handleRenewOpening}
+                      onClose={handleCloseOpening}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-bg-surface rounded-xl border border-border-subtle">
+                  <EmptySection
+                    icon="&#128188;"
+                    message="No active long-term jobs. Post one to keep hiring visible."
+                    cta="Post a Job"
+                    to="/post-shift?type=opening"
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* Event Shifts */}
+            <section>
+              <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
+                Event Shifts
               </h2>
               {openShifts.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2" aria-live="polite">
@@ -429,18 +726,18 @@ export default function RestaurantDashboard() {
                 <div className="bg-bg-surface rounded-xl border border-border-subtle">
                   <EmptySection
                     icon="&#128203;"
-                    message="No open shifts. Post a shift to get started."
-                    cta="Post a Shift"
-                    to="/post-shift"
+                    message="No event shifts posted. Use this for banquet, catering, or pop-up coverage."
+                    cta="Post Event Shift"
+                    to="/post-shift?type=shift"
                   />
                 </div>
               )}
             </section>
 
-            {/* Claimed Shifts */}
+            {/* Claimed Event Shifts */}
             <section>
               <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-                Claimed Shifts
+                Claimed Event Shifts
               </h2>
               {claimedShifts.length > 0 ? (
                 <div className="space-y-3" aria-live="polite">
@@ -460,16 +757,16 @@ export default function RestaurantDashboard() {
                 <div className="bg-bg-surface rounded-xl border border-border-subtle">
                   <EmptySection
                     icon="&#9203;"
-                    message="No claimed shifts yet. Workers will show up here once they claim your posts."
+                    message="No claimed event shifts yet. Claimed coverage will show up here."
                   />
                 </div>
               )}
             </section>
 
-            {/* Shift History */}
+            {/* Event Shift History */}
             <section>
               <h2 className="font-display text-xl font-semibold text-text-primary mb-4">
-                Shift History
+                Event Shift History
               </h2>
               {completedShifts.length > 0 ? (
                 <div className="space-y-3" aria-live="polite">
@@ -488,7 +785,7 @@ export default function RestaurantDashboard() {
                 <div className="bg-bg-surface rounded-xl border border-border-subtle">
                   <EmptySection
                     icon="&#128214;"
-                    message="No completed shifts yet. Your history will appear here."
+                    message="No completed event shifts yet. Your history will appear here."
                   />
                 </div>
               )}
@@ -503,7 +800,7 @@ export default function RestaurantDashboard() {
                 This Month
               </h2>
               <div className="grid grid-cols-2 gap-3">
-                <StatCard icon={'\u2705'} value={monthlyStats.fills} label="Shifts Filled" />
+                <StatCard icon={'\u2705'} value={monthlyStats.fills} label="Event Fills" />
                 <StatCard
                   icon={'\uD83D\uDCB0'}
                   value={`$${monthlyStats.totalSpend.toFixed(0)}`}
@@ -511,8 +808,8 @@ export default function RestaurantDashboard() {
                 />
                 <StatCard
                   icon={'\uD83D\uDCCB'}
-                  value={openShifts.length}
-                  label="Open Posts"
+                  value={openShifts.length + activeOpenings.length + expiringOpenings.length}
+                  label="Visible Posts"
                 />
                 <StatCard
                   icon={'\u2B50'}
@@ -530,11 +827,11 @@ export default function RestaurantDashboard() {
               upgradeLoading={subscriptionCheckout.loading}
             />
 
-            {/* Post a Shift CTA (mobile prominence) */}
+            {/* Post a job CTA (mobile prominence) */}
             <div className="md:hidden">
               <Link to="/post-shift">
                 <Button variant="primary" size="lg" className="w-full min-h-[44px]">
-                  Post a Shift
+                  Post a Job
                 </Button>
               </Link>
             </div>

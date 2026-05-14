@@ -1,18 +1,31 @@
 ---
-title: Posting Lifecycle, Expiration, and Renewal Reminders
+title: Job Posting Lifecycle, Expiration, and Renewal Reminders
 status: ready
 date: 2026-05-14
 owner: Codex
-product_surface: Restaurant posting, browse, restaurant dashboard, notification readiness
+product_surface: Hiring-team posting, browse, hiring dashboard, notification readiness
 ---
 
-# Posting Lifecycle, Expiration, and Renewal Reminders
+# Job Posting Lifecycle, Expiration, and Renewal Reminders
+
+## Product Direction Update
+
+ShiftPay should be positioned around **jobs and long-term hiring first**.
+
+The primary hiring object is a long-term job/opening posted by a restaurant,
+venue, hospitality group, banquet company, caterer, or other hiring team. One-time
+event shifts remain supported, but they are a secondary use case for banquet,
+catering, pop-up, and event coverage.
+
+Visible product copy should use "job", "open job", "hiring team", or "company"
+for the main flow. Use "event shift" only when the posting has a specific date
+and time.
 
 ## Phase 1 Scope Decision
 
-Phase 1 is a **truthful frontend/demo lifecycle pass**.
+Phase 1 is a **truthful frontend/demo lifecycle pass** centered on job postings.
 
-It may add deterministic mock/demo lifecycle data, relative seed dates, restaurant-dashboard lifecycle states, and local renew/repost/close interactions where they are clearly demo-only. It must not claim live email, SMS, cron, scheduled jobs, or production delivery.
+It may add deterministic mock/demo lifecycle data, relative seed dates, hiring-dashboard lifecycle states, and local renew/repost/close interactions where they are clearly demo-only. It must not claim live email, SMS, cron, scheduled jobs, or production delivery.
 
 Backend-backed lifecycle, Supabase schema changes, scheduled reminder jobs, email, SMS, and durable reminder event logs are Phase 2+.
 
@@ -20,13 +33,13 @@ Backend-backed lifecycle, Supabase schema changes, scheduled reminder jobs, emai
 
 ShiftPay currently supports two posting concepts:
 
-- **One-time shifts** from `src/data/shifts.js` and the `shifts` table/API path.
-- **Long-term openings** from `restaurant.openings` in `src/data/restaurants.js` and the `openings` table/API path.
+- **Long-term jobs/openings** from `restaurant.openings` in `src/data/restaurants.js` and the `openings` table/API path. This is the primary product flow.
+- **One-time event shifts** from `src/data/shifts.js` and the `shifts` table/API path. This is a secondary event-coverage flow.
 
-Restaurants can use `/post-shift` to choose either:
+Hiring teams can use `/post-shift` to choose either:
 
-- `Urgent Shift`: date-specific, with date, start time, end time, hourly pay, city, description, and urgent flag.
-- `Long-term Opening`: ongoing position, with role, city, pay, and description.
+- `Long-term Job`: ongoing position, with role, city, pay, and description.
+- `Event Shift`: date-specific banquet/catering/pop-up coverage with date, start time, end time, hourly pay, city, description, and urgent flag.
 
 Current limitations:
 
@@ -39,15 +52,15 @@ Current limitations:
 
 ## Problem
 
-Restaurants need stale postings removed or renewed so workers do not browse dead opportunities. Restaurants also need advance warning and a low-friction way to renew or repost before a useful posting disappears.
+Hiring teams need stale job postings removed or renewed so workers do not browse dead opportunities. They also need advance warning and a low-friction way to renew or repost before a useful job disappears.
 
 For the portfolio demo, ShiftPay needs to show that lifecycle clearly without pretending production notifications or scheduled backend automation exist.
 
 ## Goals
 
-- Define clear expiration rules for one-time shifts and long-term openings.
-- Show restaurants which postings need attention.
-- Provide renew, repost, and close actions in the restaurant dashboard.
+- Define clear expiration rules for long-term jobs and secondary event shifts.
+- Show hiring teams which postings need attention.
+- Provide renew, repost, and close actions in the hiring dashboard.
 - Keep worker-facing browse free of expired postings in Phase 1 demo data.
 - Preserve demo credibility by labeling lifecycle states as local/demo behavior until backend delivery exists.
 - Produce requirements that can drive a design loop and then a Phase 1 frontend implementation.
@@ -65,47 +78,47 @@ For the portfolio demo, ShiftPay needs to show that lifecycle clearly without pr
 
 ## Product Vocabulary
 
-- **Posting**: Generic term for either a one-time shift or long-term opening.
-- **Shift**: Date-specific work opportunity with start/end time.
-- **Opening**: Long-term role listing without a single shift date.
+- **Posting**: Generic term for either a long-term job/opening or event shift.
+- **Job / Opening**: Long-term role listing without a single shift date. This is the primary product object.
+- **Event Shift**: Date-specific work opportunity with start/end time for banquet, catering, pop-up, or similar coverage.
 - **Expires at**: Timestamp when a posting stops appearing as active.
 - **Expiring soon**: Single state beginning 7 days before expiration and ending when the posting expires.
 - **Expired**: Posting is no longer worker-facing by default.
-- **Renew**: Extend an active or expiring opening.
-- **Repost**: Create a new posting draft from an expired shift/opening.
-- **Close**: Restaurant intentionally removes a posting before expiration.
-- **Reminder**: A prompt shown to the restaurant. Phase 1 reminders appear in-app only when the restaurant views the dashboard.
+- **Renew**: Extend an active or expiring job/opening.
+- **Repost**: Create a new posting draft from an expired job or event shift.
+- **Close**: Hiring team intentionally removes a posting before expiration.
+- **Reminder**: A prompt shown to the hiring team. Phase 1 reminders appear in-app only when the hiring dashboard is viewed.
 
 ## Required Flows
 
-### Flow 1: One-Time Shift Expiration
+### Flow 1: Event Shift Expiration
 
-1. Restaurant posts a one-time shift with date, start time, and end time.
-2. Shift remains active while status is `open` and the scheduled end time has not passed.
+1. Hiring team posts an event shift with date, start time, and end time.
+2. Event shift remains active while status is `open` and the scheduled end time has not passed.
 3. After scheduled end time passes:
    - `open` shifts become expired and should not appear in worker-facing active browse results.
    - `claimed` shifts remain in the existing claimed/awaiting-completion UI. Completion/no-show adjudication is out of scope for this PRD.
    - `completed` and `cancelled` shifts remain historical.
-4. Restaurant dashboard shows expired open shifts in a management context, not as active opportunities.
-5. Restaurant can choose `Repost shift`, which opens `/post-shift` with the old role, city, pay, and description prefilled, but requires a new future date/time.
-6. Original expired shifts remain historical. Phase 2 may add `reposted_from_id` lineage; Phase 1 can keep lineage local/demo-only.
+4. Hiring dashboard shows expired open event shifts in a management context, not as active opportunities.
+5. Hiring team can choose `Repost event shift`, which opens `/post-shift` with the old role, city, pay, and description prefilled, but requires a new future date/time.
+6. Original expired event shifts remain historical. Phase 2 may add `reposted_from_id` lineage; Phase 1 can keep lineage local/demo-only.
 
-### Flow 2: Long-Term Opening Expiration
+### Flow 2: Long-Term Job Expiration
 
-1. Restaurant posts a long-term opening.
-2. Opening receives an `expiresAt` timestamp, defaulting to 30 days after creation.
-3. Opening is active while `isActive === true` and `expiresAt` is in the future.
-4. Opening enters `expiring soon` state when `expiresAt` is 7 days or fewer away.
+1. Hiring team posts a long-term job/opening.
+2. Job receives an `expiresAt` timestamp, defaulting to 30 days after creation.
+3. Job is active while `isActive === true` and `expiresAt` is in the future.
+4. Job enters `expiring soon` state when `expiresAt` is 7 days or fewer away.
 5. Expiring soon has three display thresholds:
    - `Expires in 7 days`
    - `Expires in 3 days`
    - `Expires in 24 hours`
-6. Opening expires when `expiresAt` passes.
-7. Expired openings are removed from worker-facing active browse results.
-8. Restaurant dashboard shows expired openings with `Repost opening`.
-9. Restaurant can renew an active or expiring opening for another 30 days.
+6. Job expires when `expiresAt` passes.
+7. Expired jobs are removed from worker-facing active browse results.
+8. Hiring dashboard shows expired jobs with `Repost`.
+9. Hiring team can renew an active or expiring job for another 30 days.
 10. Renewal extends from the later of `now` and current `expiresAt`, so renewing early does not shorten the current active window.
-11. Expired openings cannot be renewed in Phase 1. They must be reposted.
+11. Expired jobs cannot be renewed in Phase 1. They must be reposted.
 
 ### Flow 3: In-App Reminder States
 
