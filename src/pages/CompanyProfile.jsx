@@ -1,18 +1,18 @@
 import { useParams, Link } from 'react-router-dom';
-import { useOpenings, useRestaurant } from '../hooks/useData';
+import { useCompany, useOpenings } from '../hooks/useData';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { isActiveOpening } from '../utils/postingLifecycle';
 
-export default function RestaurantProfile() {
+export default function CompanyProfile() {
   const { id } = useParams();
-  const { restaurant, loading } = useRestaurant(id);
+  const { company, loading } = useCompany(id);
   const { openings: allOpenings } = useOpenings();
 
   if (loading) return <LoadingSpinner message="Loading hiring profile..." />;
 
-  if (!restaurant) {
+  if (!company) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center font-body">
         <div className="text-center">
@@ -38,7 +38,7 @@ export default function RestaurantProfile() {
     employeeCount,
     ratingAverage,
     ratingCount,
-  } = restaurant;
+  } = company;
 
   const openings = allOpenings.filter(
     (opening) => String(opening.restaurantId) === String(id) && isActiveOpening(opening)

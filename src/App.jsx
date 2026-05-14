@@ -5,15 +5,15 @@ import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import WorkerSignup from './pages/WorkerSignup'
-import RestaurantSignup from './pages/RestaurantSignup'
+import HiringSignup from './pages/HiringSignup'
 import Browse from './pages/Browse'
 import Swipe from './pages/Swipe'
 import WorkerProfile from './pages/WorkerProfile'
-import RestaurantProfile from './pages/RestaurantProfile'
+import CompanyProfile from './pages/CompanyProfile'
 import WorkerDashboard from './pages/WorkerDashboard'
-import RestaurantDashboard from './pages/RestaurantDashboard'
-import ShiftDetail from './pages/ShiftDetail'
-import PostShift from './pages/PostShift'
+import HiringDashboard from './pages/HiringDashboard'
+import JobDetail from './pages/JobDetail'
+import PostJob from './pages/PostJob'
 
 function NotFound() {
   return (
@@ -41,11 +41,13 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/worker/signup" element={<WorkerSignup />} />
-              <Route path="/restaurant/signup" element={<RestaurantSignup />} />
+              <Route path="/hiring/signup" element={<HiringSignup />} />
+              <Route path="/restaurant/signup" element={<HiringSignup />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/swipe" element={<Swipe />} />
               <Route path="/worker/:id" element={<WorkerProfile />} />
-              <Route path="/restaurant/:id" element={<RestaurantProfile />} />
+              <Route path="/company/:id" element={<CompanyProfile />} />
+              <Route path="/restaurant/:id" element={<CompanyProfile />} />
               <Route
                 path="/dashboard/worker"
                 element={
@@ -58,16 +60,32 @@ function App() {
                 path="/dashboard/restaurant"
                 element={
                   <ProtectedRoute requiredRole="restaurant">
-                    <RestaurantDashboard />
+                    <HiringDashboard />
                   </ProtectedRoute>
                 }
               />
-              <Route path="/jobs/:id" element={<ShiftDetail />} />
+              <Route
+                path="/dashboard/hiring"
+                element={
+                  <ProtectedRoute requiredRole="restaurant">
+                    <HiringDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/jobs/:id" element={<JobDetail />} />
+              <Route
+                path="/post-job"
+                element={
+                  <ProtectedRoute requiredRole="restaurant">
+                    <PostJob />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/post-shift"
                 element={
                   <ProtectedRoute requiredRole="restaurant">
-                    <PostShift />
+                    <PostJob />
                   </ProtectedRoute>
                 }
               />

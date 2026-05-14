@@ -42,7 +42,7 @@ export default function Login() {
     if (user && profile?.role) {
       const dest =
         profile.role === 'restaurant'
-          ? '/dashboard/restaurant'
+          ? '/dashboard/hiring'
           : '/dashboard/worker';
       navigate(dest, { replace: true });
     }
@@ -74,7 +74,7 @@ export default function Login() {
   }, [otpSent]);
 
   const signupPath =
-    activeTab === 'worker' ? '/worker/signup' : '/restaurant/signup';
+    activeTab === 'worker' ? '/worker/signup' : '/hiring/signup';
 
   // Format phone for display: (555) 555-5555
   const formatPhoneDisplay = (value) => {
@@ -176,7 +176,7 @@ export default function Login() {
 
   const handleDemoSignIn = (role) => {
     signInDemo(role);
-    navigate(role === 'restaurant' ? '/dashboard/restaurant' : '/dashboard/worker');
+    navigate(role === 'restaurant' ? '/dashboard/hiring' : '/dashboard/worker');
   };
 
   return (

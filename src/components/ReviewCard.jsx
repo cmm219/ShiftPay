@@ -46,7 +46,7 @@ export default function ReviewCard({ review }) {
     : null;
 
   const badgeLabel =
-    reviewerType === 'worker' ? 'Worker Review' : 'Restaurant Review';
+    reviewerType === 'worker' ? 'Worker Review' : 'Company Review';
 
   return (
     <div className="bg-bg-surface/50 rounded-lg p-4 space-y-2">

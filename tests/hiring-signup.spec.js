@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Restaurant Signup (/restaurant/signup)', () => {
+test.describe('Hiring Signup (/hiring/signup)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/restaurant/signup');
-    await page.evaluate(() => localStorage.removeItem('shiftpay-restaurant-signup'));
+    await page.goto('/hiring/signup');
+    await page.evaluate(() => localStorage.removeItem('shiftpay-hiring-signup'));
     await page.reload();
   });
 
@@ -11,7 +11,7 @@ test.describe('Restaurant Signup (/restaurant/signup)', () => {
     await expect(page.locator('text=/Step 1/').first()).toBeVisible();
   });
 
-  test('has restaurant name input', async ({ page }) => {
+  test('has company name input', async ({ page }) => {
     // Find any text input on the page
     const inputs = page.locator('input[type="text"], input:not([type])');
     expect(await inputs.count()).toBeGreaterThan(0);

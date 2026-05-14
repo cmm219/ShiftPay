@@ -133,7 +133,7 @@ function ProgressBar({ currentStep }) {
 // Step Components
 // ---------------------------------------------------------------------------
 
-function StepRestaurantInfo({ formData, updateField }) {
+function StepHiringInfo({ formData, updateField }) {
   return (
     <div className="space-y-5 animate-fade-in">
       <h2 className="text-2xl font-display text-text-primary mb-1">
@@ -258,7 +258,7 @@ function StepAccount({ formData, updateField, password, setPassword, confirmPass
         Create your account
       </h2>
       <p className="text-text-secondary text-sm mb-6">
-        Set up your login credentials to start posting shifts.
+        Set up your login credentials to start posting jobs.
       </p>
 
       {/* Free banner repeated in this step */}
@@ -271,7 +271,7 @@ function StepAccount({ formData, updateField, password, setPassword, confirmPass
             id="email"
             type="email"
             className={inputBase}
-            placeholder="manager@restaurant.com"
+            placeholder="hiring@example.com"
             value={formData.email}
             onChange={(e) => updateField('email', e.target.value)}
           />
@@ -354,11 +354,11 @@ function validateStep(step, formData, { password, confirmPassword } = {}) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function RestaurantSignup() {
+export default function HiringSignup() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const [formData, updateField, , clearForm, isLoaded] =
-    useLocalStorageForm('shiftpay-restaurant-signup', {
+    useLocalStorageForm('shiftpay-hiring-signup', {
       step: 1,
       name: '',
       type: '',
@@ -440,7 +440,7 @@ export default function RestaurantSignup() {
         return;
       }
 
-      // 2. Insert restaurant profile
+      // 2. Insert company profile in the current restaurants table
       const { error: restaurantError } = await supabase.from('restaurants').insert({
         profile_id: userId,
         name: formData.name,
@@ -450,7 +450,7 @@ export default function RestaurantSignup() {
       });
 
       if (restaurantError) {
-        setError('Account created but restaurant save failed: ' + restaurantError.message);
+        setError('Account created but company profile save failed: ' + restaurantError.message);
         setSubmitting(false);
         return;
       }
@@ -471,7 +471,7 @@ export default function RestaurantSignup() {
       clearForm();
       setShowToast(true);
       setTimeout(() => {
-        navigate('/dashboard/restaurant');
+        navigate('/dashboard/hiring');
       }, 1500);
     } catch (err) {
       setError(err.message || 'An unexpected error occurred.');
@@ -483,7 +483,7 @@ export default function RestaurantSignup() {
   const renderStep = () => {
     switch (step) {
       case 1:
-        return <StepRestaurantInfo formData={formData} updateField={updateField} />;
+        return <StepHiringInfo formData={formData} updateField={updateField} />;
       case 2:
         return <StepRolesHiring formData={formData} updateField={updateField} />;
       case 3:

@@ -293,7 +293,7 @@ function OpeningCard({ opening }) {
           )}
         </div>
         <Link
-          to={`/restaurant/${restaurantId}`}
+          to={`/company/${restaurantId}`}
           className="rounded-md border border-border-subtle bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-colors hover:border-border-strong hover:bg-bg-surface-hover"
         >
           View details

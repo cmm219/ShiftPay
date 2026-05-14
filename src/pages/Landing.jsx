@@ -137,8 +137,8 @@ const ROLE_TILES = [
 
 const BUILT_ITEMS = [
   {
-    title: 'Worker & restaurant signup',
-    body: 'Multi-step onboarding forms with role, certification, availability, and restaurant profile inputs.',
+    title: 'Worker & hiring-team signup',
+    body: 'Multi-step onboarding forms with role, certification, availability, and company profile inputs.',
   },
   {
     title: 'Browse workers + jobs',
@@ -146,15 +146,15 @@ const BUILT_ITEMS = [
   },
   {
     title: 'Post a job',
-    body: 'Restaurant posting flow for role, city, rate, description, and optional event-shift timing.',
+    body: 'Hiring-team posting flow for role, city, rate, description, and optional event-shift timing.',
   },
   {
-    title: 'Worker + restaurant dashboards',
+    title: 'Worker + hiring dashboards',
     body: 'Per-role views of activity and seeded shift / opening state.',
   },
   {
     title: 'Swipe + profile detail',
-    body: 'Tinder-style discovery view and full worker/restaurant profile pages.',
+    body: 'Tinder-style discovery view and full worker/company profile pages.',
   },
   {
     title: 'Tailwind v4 design tokens',
@@ -271,7 +271,7 @@ export default function Landing() {
         </span>
         <span className="text-[#f5d27d]">
           Portfolio MVP. Profiles, ratings, and shifts are seeded mock data — no real
-          workers, restaurants, or payments are involved.
+          workers, hiring teams, or payments are involved.
         </span>
       </div>
 
@@ -291,11 +291,11 @@ export default function Landing() {
               Hospitality staffing marketplace · demo build
             </div>
             <h1 className="font-display text-4xl leading-[1.07] font-semibold tracking-tight text-text-primary md:text-[56px]">
-              The restaurant hiring flow for operators,{' '}
+              The hospitality hiring flow for operators,{' '}
               <em className="not-italic text-accent">prototyped end&#8209;to&#8209;end.</em>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-text-secondary md:text-lg">
-              ShiftPay is a marketplace concept for matching restaurants with vetted
+              ShiftPay is a marketplace concept for matching hiring teams with vetted
               front- and back-of-house workers. The demo lets you browse profiles,
               inspect open jobs, walk through posting a role, and review dashboard states against
               seeded data — every screen is clickable.
@@ -382,7 +382,7 @@ export default function Landing() {
                   {activeOpenings.slice(0, 3).map((opening, i) => (
                     <Link
                       key={opening.id || i}
-                      to={`/restaurant/${opening.restaurantId}`}
+                      to={`/company/${opening.restaurantId}`}
                       className={`block rounded-xl border p-4 transition-colors ${
                         i === 0
                           ? 'border-accent/35 bg-gradient-to-b from-accent-soft to-bg-surface-hover'
@@ -437,7 +437,7 @@ export default function Landing() {
               Three roles, one round-trip you can click through.
             </h2>
             <p className="mt-3 max-w-xl text-text-secondary">
-              Sign up as a worker, post as a restaurant, browse the marketplace — every
+              Sign up as a worker, post as a hiring team, browse the marketplace — every
               step lives on a real route with seeded data and the same state model.
             </p>
           </div>
@@ -453,18 +453,18 @@ export default function Landing() {
                 to: '/worker/signup',
               },
               {
-                num: '02 · Restaurant',
+                num: '02 · Hiring Team',
                 icon: 'building',
                 title: 'Post a job',
                 body: 'Role, city, rate, description, and lifecycle state. Event-shift timing is available for banquet or catering work.',
-                foot: '/post-shift',
-                to: '/restaurant/signup',
+                foot: '/post-job',
+                to: '/hiring/signup',
               },
               {
                 num: '03 · Explore',
                 icon: 'compass',
                 title: 'Browse & review',
-                body: 'Inspect worker profiles, open restaurant pages, and review dashboard states against seeded data.',
+                body: 'Inspect worker profiles, open company pages, and review dashboard states against seeded data.',
                 foot: '/browse · /dashboard',
                 to: '/browse',
               },
