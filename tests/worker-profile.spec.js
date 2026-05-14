@@ -78,7 +78,7 @@ test.describe('Worker Profile (/worker/:id)', () => {
   });
 
   // ── Review cards ──
-  test('review cards display restaurant name, rating, comment', async ({ page }) => {
+  test('review cards display company name, rating, comment', async ({ page }) => {
     const reviewCards = page.locator('[class*="bg-bg-elevated"][class*="rounded-xl"]');
     if (await reviewCards.count() > 0) {
       const first = reviewCards.first();

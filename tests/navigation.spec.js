@@ -5,12 +5,12 @@ test.describe('Navigation & Routing', () => {
     { path: '/', name: 'Landing' },
     { path: '/login', name: 'Login' },
     { path: '/worker/signup', name: 'Worker Signup' },
-    { path: '/restaurant/signup', name: 'Restaurant Signup' },
+    { path: '/hiring/signup', name: 'Hiring Signup' },
     { path: '/browse', name: 'Browse' },
     { path: '/swipe', name: 'Swipe' },
     { path: '/worker/1', name: 'Worker Profile' },
-    { path: '/restaurant/1', name: 'Restaurant Profile' },
-    { path: '/jobs/1', name: 'Shift Detail' },
+    { path: '/company/1', name: 'Company Profile' },
+    { path: '/jobs/1', name: 'Job Detail' },
   ];
 
   for (const route of publicRoutes) {
@@ -28,8 +28,8 @@ test.describe('Navigation & Routing', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('protected /dashboard/restaurant redirects to /login', async ({ page }) => {
-    await page.goto('/dashboard/restaurant');
+  test('protected /dashboard/hiring redirects to /login', async ({ page }) => {
+    await page.goto('/dashboard/hiring');
     await expect(page).toHaveURL(/\/login/);
   });
 

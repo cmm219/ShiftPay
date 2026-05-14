@@ -111,7 +111,7 @@ function numericPay(value) {
 }
 
 // ---------------------------------------------------------------------------
-// Shared UI atoms (matching WorkerSignup / RestaurantSignup)
+// Shared UI atoms (matching WorkerSignup / HiringSignup)
 // ---------------------------------------------------------------------------
 
 const inputBase =
@@ -331,7 +331,7 @@ function StepBasics({ formData, updateField, errors }) {
         <div className="flex items-center gap-2 bg-accent-soft border border-accent rounded-lg px-4 py-3">
           <span className="text-accent text-sm font-semibold">Ongoing</span>
           <span className="text-text-secondary text-sm">
-            — Workers will see this as an open restaurant job
+            — Workers will see this as an open job from your hiring team
           </span>
         </div>
       )}
@@ -559,7 +559,7 @@ function hasErrors(errors) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function PostShift() {
+export default function PostJob() {
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
   const repostType = searchParams.get('repost');
@@ -568,8 +568,8 @@ export default function PostShift() {
   const defaultShiftType =
     repostType === 'shift' || typeParam === 'shift' ? 'urgent' : 'long-term';
   const formStorageKey = isRepost
-    ? `shiftpay-post-shift-repost-${searchParams.toString()}`
-    : 'shiftpay-post-shift';
+    ? `shiftpay-post-job-repost-${searchParams.toString()}`
+    : 'shiftpay-post-job';
 
   // Derive smart defaults (city from profile if available)
   const defaultCity = profile?.city || '';
@@ -707,7 +707,7 @@ export default function PostShift() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                to="/dashboard/restaurant"
+                to="/dashboard/hiring"
                 className="bg-accent text-black font-semibold px-6 py-2.5 rounded-lg hover:bg-accent-hover transition-colors inline-block"
               >
                 Go to Dashboard
@@ -752,7 +752,7 @@ export default function PostShift() {
             </button>
             <div className="mt-4">
               <Link
-                to="/dashboard/restaurant"
+                to="/dashboard/hiring"
                 className="text-text-muted hover:text-text-secondary text-sm transition-colors"
               >
                 Back to Dashboard

@@ -1,5 +1,5 @@
 // ============================================================
-// ShiftPay - Restaurant Staff Marketplace Constants
+// ShiftPay - Hospitality Hiring Marketplace Constants
 // ============================================================
 
 // --- Roles ---
@@ -118,7 +118,7 @@ export const AVAILABILITIES = {
 
 export const AVAILABILITY_LIST = Object.values(AVAILABILITIES);
 
-// --- Restaurant Types ---
+// --- Company / Venue Types ---
 export const RESTAURANT_TYPES = {
   fine_dining: { id: 'fine_dining', label: 'Fine Dining' },
   casual_dining: { id: 'casual_dining', label: 'Casual Dining' },

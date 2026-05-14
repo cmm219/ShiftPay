@@ -99,6 +99,11 @@ export function useRestaurants() {
   return { restaurants: data || [], loading, error };
 }
 
+export function useCompanies() {
+  const { restaurants, loading, error } = useRestaurants();
+  return { companies: restaurants, loading, error };
+}
+
 export function useRestaurant(id) {
   const mockRestaurant = mockRestaurants.find(
     (r) => String(r.id) === String(id)
@@ -111,6 +116,11 @@ export function useRestaurant(id) {
   );
 
   return { restaurant: data, loading, error };
+}
+
+export function useCompany(id) {
+  const { restaurant, loading, error } = useRestaurant(id);
+  return { company: restaurant, loading, error };
 }
 
 export function useShifts() {

@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Shift Detail (/jobs/:id)', () => {
+test.describe('Job Detail (/jobs/:id)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/jobs/1');
     await page.waitForSelector('h1', { timeout: 10000 });
   });
 
-  test('renders restaurant name', async ({ page }) => {
+  test('renders company name', async ({ page }) => {
     await expect(page.locator('h1')).toBeVisible();
   });
 

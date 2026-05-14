@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Restaurant Profile (/restaurant/:id)', () => {
+test.describe('Company Profile (/company/:id)', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/restaurant/1');
+    await page.goto('/company/1');
     await page.waitForSelector('h1', { timeout: 10000 });
   });
 
-  test('renders restaurant name', async ({ page }) => {
+  test('renders company name', async ({ page }) => {
     await expect(page.locator('h1')).toContainText(/\w+/);
   });
 
@@ -20,7 +20,7 @@ test.describe('Restaurant Profile (/restaurant/:id)', () => {
     await expect(page.locator('body')).toContainText(/Tampa|Miami|Orlando|St. Pete/);
   });
 
-  test('shows restaurant type', async ({ page }) => {
+  test('shows company type', async ({ page }) => {
     await expect(page.locator('body')).toContainText(/Fine Dining|Upscale Casual|Nightlife|Gastropub/i);
   });
 
@@ -56,8 +56,8 @@ test.describe('Restaurant Profile (/restaurant/:id)', () => {
     await expect(page).toHaveURL('/');
   });
 
-  test('404 for non-existent restaurant', async ({ page }) => {
-    await page.goto('/restaurant/99999');
+  test('404 for non-existent company', async ({ page }) => {
+    await page.goto('/company/99999');
     await expect(page.locator('text=404')).toBeVisible({ timeout: 10000 });
   });
 });

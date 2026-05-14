@@ -118,7 +118,7 @@ const SpinnerSmall = () => (
 // Component
 // ────────────────────────────────────────────────────────────
 
-export default function ShiftDetail() {
+export default function JobDetail() {
   const { id } = useParams();
   const { shift, loading } = useShift(id);
   const { user, profile } = useAuth();
@@ -130,12 +130,12 @@ export default function ShiftDetail() {
   // Derived auth info
   const userRole = profile?.role; // 'worker' | 'restaurant' | null
   const isWorker = userRole === 'worker';
-  const isRestaurant = userRole === 'restaurant';
+  const isHiringTeam = userRole === 'restaurant';
   const isAuthenticated = !!user;
 
   // Ownership checks
   const isOwnWorkerShift = isWorker && shift?.workerId && profile?.worker_id && String(shift.workerId) === String(profile.worker_id);
-  const isOwnRestaurantShift = isRestaurant && shift?.restaurantId && profile?.restaurant_id && String(shift.restaurantId) === String(profile.restaurant_id);
+  const isOwnHiringTeamShift = isHiringTeam && shift?.restaurantId && profile?.restaurant_id && String(shift.restaurantId) === String(profile.restaurant_id);
   const shiftPast = useMemo(() => isShiftPast(shift), [shift]);
 
   // ── Loading ──
@@ -177,7 +177,7 @@ export default function ShiftDetail() {
     feedback,
   } = shift;
 
-  const displayStatus = statusLabel(status, userRole, isOwnWorkerShift || isOwnRestaurantShift, null);
+  const displayStatus = statusLabel(status, userRole, isOwnWorkerShift || isOwnHiringTeamShift, null);
 
   // ── Claim handler ──
   const handleClaim = async () => {
@@ -226,7 +226,7 @@ export default function ShiftDetail() {
             <div className="bg-bg-elevated rounded-lg border border-border-subtle p-6 text-left mb-8">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-text-muted text-xs uppercase tracking-wide">Restaurant</p>
+                  <p className="text-text-muted text-xs uppercase tracking-wide">Company</p>
                   <p className="text-text-primary font-semibold mt-1">{restaurantName}</p>
                 </div>
                 <div>
@@ -305,7 +305,7 @@ export default function ShiftDetail() {
           Back to Browse
         </Link>
 
-        {/* Header: restaurant + role + status badge */}
+        {/* Header: company + role + status badge */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <h1 className="font-display text-3xl font-bold text-text-primary">
@@ -325,7 +325,7 @@ export default function ShiftDetail() {
             <span className="text-text-secondary flex items-center gap-1">
               {'\uD83D\uDCCD'} {city}
             </span>
-            {isOwnRestaurantShift && (
+            {isOwnHiringTeamShift && (
               <>
                 <span className="text-text-muted">&middot;</span>
                 <span className="text-accent text-xs font-medium bg-accent-soft rounded-full px-3 py-1">
@@ -409,10 +409,10 @@ export default function ShiftDetail() {
           <section className="mt-10">
             <div className="bg-danger-soft rounded-xl border border-danger/30 p-6 text-center">
               <p className="text-danger font-semibold text-lg">
-                {isRestaurant ? 'Worker no-show' : 'Marked as no-show'}
+                {isHiringTeam ? 'Worker no-show' : 'Marked as no-show'}
               </p>
               <p className="text-text-secondary mt-2 text-sm">
-                {isRestaurant
+                {isHiringTeam
                   ? 'The assigned worker did not show up for this shift.'
                   : 'You were marked as a no-show for this shift. If this is incorrect, please contact support.'}
               </p>
@@ -445,7 +445,7 @@ export default function ShiftDetail() {
         )}
 
         {/* CLAIMED — not yours */}
-        {status === 'claimed' && !isOwnWorkerShift && !isOwnRestaurantShift && isWorker && (
+        {status === 'claimed' && !isOwnWorkerShift && !isOwnHiringTeamShift && isWorker && (
           <section className="mt-10">
             <div className="bg-bg-surface rounded-xl border border-border-subtle p-6 text-center">
               <p className="text-text-primary font-semibold text-lg">This shift has been claimed</p>
@@ -462,8 +462,8 @@ export default function ShiftDetail() {
           </section>
         )}
 
-        {/* CLAIMED — own shift (worker or restaurant owner) */}
-        {status === 'claimed' && (isOwnWorkerShift || isOwnRestaurantShift) && (
+        {/* CLAIMED - own shift (worker or hiring-team owner) */}
+        {status === 'claimed' && (isOwnWorkerShift || isOwnHiringTeamShift) && (
           <section className="mt-10">
             <div className="bg-accent-soft rounded-xl border border-accent/30 p-6">
               <div className="flex items-center gap-3 mb-3">
@@ -550,7 +550,7 @@ export default function ShiftDetail() {
               </p>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-text-muted text-xs uppercase tracking-wide">Restaurant</p>
+                  <p className="text-text-muted text-xs uppercase tracking-wide">Company</p>
                   <p className="text-text-primary font-medium mt-1">{restaurantName}</p>
                 </div>
                 {workerId && (
@@ -665,10 +665,10 @@ export default function ShiftDetail() {
                   First to claim gets the shift. No application needed.
                 </p>
               </div>
-            ) : isRestaurant ? (
+            ) : isHiringTeam ? (
               <div className="text-center">
                 <p className="text-text-secondary text-sm">
-                  You're viewing this as a restaurant. Only workers can claim shifts.
+                  You're viewing this as a hiring team. Only workers can claim shifts.
                 </p>
               </div>
             ) : null}

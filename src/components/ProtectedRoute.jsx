@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
   if (requiredRole && profile?.role !== requiredRole) {
     const redirectPath = profile?.role === 'worker'
       ? '/dashboard/worker'
-      : '/dashboard/restaurant'
+      : '/dashboard/hiring'
     return <Navigate to={redirectPath} replace />
   }
 

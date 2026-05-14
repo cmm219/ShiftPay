@@ -6,15 +6,15 @@ test.describe('Posting lifecycle demo flow', () => {
     await page.evaluate(() => {
       localStorage.removeItem('shiftpay-demo-session');
       localStorage.removeItem('shiftpay-posting-lifecycle-overrides');
-      localStorage.removeItem('shiftpay-post-shift');
+      localStorage.removeItem('shiftpay-post-job');
     });
   });
 
-  test('demo restaurant can review and renew lifecycle attention items', async ({ page }) => {
+  test('demo hiring team can review and renew lifecycle attention items', async ({ page }) => {
     await page.goto('/login');
     await page.getByRole('button', { name: 'Demo hiring team' }).click();
 
-    await expect(page).toHaveURL(/\/dashboard\/restaurant/);
+    await expect(page).toHaveURL(/\/dashboard\/hiring/);
     await expect(page.getByRole('heading', { name: "Bern's Steak House" })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
     await expect(page.getByText('Expiring soon').first()).toBeVisible();
@@ -24,10 +24,10 @@ test.describe('Posting lifecycle demo flow', () => {
     await expect(page.getByText(/Job renewed until/)).toBeVisible();
   });
 
-  test('expired shift repost preloads a new future-date draft', async ({ page }) => {
+  test('expired event shift repost preloads a new future-date draft', async ({ page }) => {
     await page.goto('/login');
     await page.evaluate(() => {
-      localStorage.setItem('shiftpay-post-shift', JSON.stringify({
+      localStorage.setItem('shiftpay-post-job', JSON.stringify({
         step: 1,
         shiftType: 'long-term',
         role: 'Dishwasher',
@@ -39,7 +39,7 @@ test.describe('Posting lifecycle demo flow', () => {
     await page.getByRole('button', { name: 'Demo hiring team' }).click();
 
     await page.getByRole('link', { name: 'Repost event shift' }).first().click();
-    await expect(page).toHaveURL(/\/post-shift\?.*repost=shift/);
+    await expect(page).toHaveURL(/\/post-job\?.*repost=shift/);
     await expect(page.getByText('Repost draft')).toBeVisible();
     await expect(page.getByLabel('Role')).toHaveValue('Line Cook');
     await expect(page.getByLabel('City')).toHaveValue('Tampa');

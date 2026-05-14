@@ -14,18 +14,18 @@ function readDemoSession() {
 }
 
 function buildDemoSession(role) {
-  const isRestaurant = role === 'restaurant'
+  const isHiringTeam = role === 'restaurant'
   return {
     user: {
       id: `demo-${role}`,
-      email: isRestaurant ? 'demo.hiring@shiftpay.local' : 'demo.worker@shiftpay.local',
+      email: isHiringTeam ? 'demo.hiring@shiftpay.local' : 'demo.worker@shiftpay.local',
     },
     profile: {
       id: `demo-${role}`,
       role,
-      city: isRestaurant ? 'Tampa' : 'Miami',
-      restaurant_id: isRestaurant ? 1 : null,
-      worker_id: isRestaurant ? null : 1,
+      city: isHiringTeam ? 'Tampa' : 'Miami',
+      restaurant_id: isHiringTeam ? 1 : null,
+      worker_id: isHiringTeam ? null : 1,
       is_demo: true,
     },
   }

@@ -80,7 +80,7 @@ export default function Navbar() {
                         I'm a Worker
                       </Link>
                       <Link
-                        to="/restaurant/signup"
+                        to="/hiring/signup"
                         className="block px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover transition-colors"
                       >
                         I'm Hiring
@@ -92,7 +92,7 @@ export default function Navbar() {
             )}
 
             {user && role === 'restaurant' && (
-              <NavLink to="/post-shift" className={linkClasses}>
+              <NavLink to="/post-job" className={linkClasses}>
                 Post a Job
               </NavLink>
             )}
@@ -100,7 +100,7 @@ export default function Navbar() {
             {user && (
               <>
                 <NavLink
-                  to={role === 'restaurant' ? '/dashboard/restaurant' : '/dashboard/worker'}
+                  to={role === 'restaurant' ? '/dashboard/hiring' : '/dashboard/worker'}
                   className={linkClasses}
                 >
                   Dashboard
@@ -207,14 +207,14 @@ export default function Navbar() {
                 <NavLink to="/worker/signup" className={linkClasses} onClick={() => setMobileOpen(false)}>
                   Sign Up as Worker
                 </NavLink>
-                <NavLink to="/restaurant/signup" className={linkClasses} onClick={() => setMobileOpen(false)}>
+                <NavLink to="/hiring/signup" className={linkClasses} onClick={() => setMobileOpen(false)}>
                   Sign Up as Hiring Team
                 </NavLink>
               </>
             )}
 
             {user && role === 'restaurant' && (
-              <NavLink to="/post-shift" className={linkClasses} onClick={() => setMobileOpen(false)}>
+              <NavLink to="/post-job" className={linkClasses} onClick={() => setMobileOpen(false)}>
                 Post a Job
               </NavLink>
             )}
@@ -222,7 +222,7 @@ export default function Navbar() {
             {user && (
               <>
                 <NavLink
-                  to={role === 'restaurant' ? '/dashboard/restaurant' : '/dashboard/worker'}
+                  to={role === 'restaurant' ? '/dashboard/hiring' : '/dashboard/worker'}
                   className={linkClasses}
                   onClick={() => setMobileOpen(false)}
                 >
