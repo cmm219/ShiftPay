@@ -43,8 +43,17 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-display italic text-accent">
-            ShiftPay
+          <Link to="/" className="flex items-center gap-2.5">
+            <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent to-accent-hover font-mono text-xs font-bold text-bg-primary">
+              SP
+            </span>
+            <span className="font-display text-xl font-semibold text-text-primary">
+              ShiftPay
+            </span>
+            <span className="hidden items-center rounded-full border border-border-subtle bg-bg-surface-hover px-2 py-0.5 font-mono text-[10px] tracking-wide text-text-muted sm:inline-flex">
+              <span className="mr-1 h-1 w-1 rounded-full bg-accent" />
+              Portfolio MVP
+            </span>
           </Link>
 
           {/* Desktop nav links */}

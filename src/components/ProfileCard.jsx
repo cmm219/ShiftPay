@@ -75,10 +75,10 @@ export default function ProfileCard({ worker, onViewProfile }) {
         </p>
 
         {/* Actions */}
-        <div className="flex gap-2 mt-auto pt-2">
-          <Link to={`/worker/${id}`} className="flex-1">
+        <div className="mt-auto pt-2">
+          <Link to={`/worker/${id}`}>
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               className="w-full"
               onClick={() => onViewProfile?.(worker)}
@@ -86,9 +86,6 @@ export default function ProfileCard({ worker, onViewProfile }) {
               View Profile
             </Button>
           </Link>
-          <Button variant="primary" size="sm" className="flex-1">
-            Express Interest
-          </Button>
         </div>
       </div>
     </div>
