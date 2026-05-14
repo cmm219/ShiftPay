@@ -6,7 +6,11 @@ test.describe('Landing Page (/)', () => {
   });
 
   test('renders hero headline', async ({ page }) => {
-    await expect(page.locator('text=Find Certified Restaurant Staff')).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: /The shift staffing flow for restaurants/i,
+      }),
+    ).toBeVisible();
   });
 
   test('navbar shows ShiftPay logo', async ({ page }) => {
@@ -27,21 +31,20 @@ test.describe('Landing Page (/)', () => {
     await expect(page.locator('nav >> text=Sign Up')).toBeVisible();
   });
 
-  test('"I\'m a Restaurant" hero CTA navigates', async ({ page }) => {
-    // The hero CTA uses the exact visible text on the landing page
-    const cta = page.getByRole('link', { name: /I'm a Restaurant/i });
+  test('"Open browse demo" hero CTA navigates', async ({ page }) => {
+    const cta = page.getByRole('link', { name: /Open browse demo/i });
     await cta.click();
-    await expect(page).toHaveURL(/\/(restaurant|browse)/);
+    await expect(page).toHaveURL(/\/browse/);
   });
 
-  test('"I\'m Looking for Work" CTA navigates', async ({ page }) => {
-    await page.click('text=I\'m Looking for Work');
-    await expect(page).toHaveURL(/\/(worker|signup|browse)/);
+  test('"Try swipe view" CTA navigates', async ({ page }) => {
+    await page.getByRole('link', { name: /Try swipe view/i }).click();
+    await expect(page).toHaveURL(/\/swipe/);
   });
 
-  test('stats section shows numbers', async ({ page }) => {
-    await expect(page.locator('text=500+')).toBeVisible();
-    await expect(page.locator('text=Verified Workers')).toBeVisible();
+  test('demo banner and seed counts are truthful', async ({ page }) => {
+    await expect(page.locator('text=Demo mode')).toBeVisible();
+    await expect(page.locator('text=/10 mock workers.*11 openings seeded/')).toBeVisible();
   });
 
   test('mobile hamburger menu opens', async ({ page }) => {

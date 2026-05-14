@@ -61,7 +61,7 @@ test.describe('Navigation & Routing', () => {
   test('Browse → Swipe toggle and back', async ({ page }) => {
     await page.goto('/browse');
     await page.waitForSelector('[class*="animate-fade-in"]', { timeout: 10000 });
-    await page.click('a:has-text("Card")');
+    await page.getByRole('link', { name: /Swipe view/ }).click();
     await expect(page).toHaveURL(/\/swipe/);
     await page.waitForSelector('h2', { timeout: 10000 });
     await page.click('text=Grid View');
