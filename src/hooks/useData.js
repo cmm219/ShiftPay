@@ -34,6 +34,7 @@ import {
   prepareDemoShifts,
   readLifecycleOverrides,
 } from '../utils/postingLifecycle';
+import { filterActivePostingReminders } from '../utils/postingReminders';
 
 // ────────────────────────────────────────────────────────────
 // Generic async data hook
@@ -208,10 +209,14 @@ export function useHiringLifecycleData(restaurantId) {
     [],
     readLifecycleOverrides()
   ).openings;
+  const activeReminders = filterActivePostingReminders(
+    remindersQuery.data || [],
+    openings
+  );
 
   return {
     openings,
-    reminders: remindersQuery.data || [],
+    reminders: activeReminders,
     loading: openingsQuery.loading || remindersQuery.loading,
     error: openingsQuery.error || remindersQuery.error,
   };
