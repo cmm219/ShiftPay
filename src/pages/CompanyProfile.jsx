@@ -1,14 +1,19 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCompany, useOpenings } from '../hooks/useData';
+import { useSavedJobs } from '../hooks/useSavedJobs';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { isActiveOpening } from '../utils/postingLifecycle';
+import { isSaveableLongTermOpening } from '../utils/savedJobs';
 
 export default function CompanyProfile() {
   const { id } = useParams();
   const { company, loading } = useCompany(id);
   const { openings: allOpenings } = useOpenings();
+  const savedJobs = useSavedJobs();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   if (loading) return <LoadingSpinner message="Loading hiring profile..." />;
 
@@ -43,6 +48,22 @@ export default function CompanyProfile() {
   const openings = allOpenings.filter(
     (opening) => String(opening.restaurantId) === String(id) && isActiveOpening(opening)
   );
+
+  const handleSaveJob = (opening) => {
+    if (savedJobs.canSaveJobs) {
+      if (!isSaveableLongTermOpening(opening)) return;
+      savedJobs.toggle(opening.id);
+      return;
+    }
+
+    if (savedJobs.isHiringTeam) return;
+
+    const params = new URLSearchParams({
+      saveJob: String(opening.id),
+      returnTo: `${location.pathname}${location.search}`,
+    });
+    navigate(`/login?${params.toString()}`);
+  };
 
   return (
     <div className="min-h-screen bg-bg-primary font-body">
@@ -119,9 +140,22 @@ export default function CompanyProfile() {
 
                   <p className="text-text-primary text-lg font-medium">{opening.payRange}</p>
 
-                  <Button variant="primary" size="sm" className="mt-auto w-full">
-                    Apply
-                  </Button>
+                  <div className="mt-auto">
+                    {!savedJobs.isHiringTeam && isSaveableLongTermOpening(opening) ? (
+                      <Button
+                        variant={savedJobs.isSaved(opening.id) ? 'secondary' : 'primary'}
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleSaveJob(opening)}
+                      >
+                        {savedJobs.isSaved(opening.id) ? 'Saved' : 'Save job'}
+                      </Button>
+                    ) : (
+                      <Button variant="primary" size="sm" className="w-full">
+                        Apply
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
