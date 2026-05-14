@@ -44,10 +44,10 @@ test.describe('Company Profile (/company/:id)', () => {
     await expect(page.locator('text=/\\$/').first()).toBeVisible();
   });
 
-  test('Apply buttons exist', async ({ page }) => {
-    const applyBtns = page.locator('button:has-text("Apply")');
-    if (await applyBtns.count() > 0) {
-      await expect(applyBtns.first()).toBeVisible();
+  test('job action buttons exist', async ({ page }) => {
+    const actionBtns = page.locator('button:has-text("Save job")');
+    if (await actionBtns.count() > 0) {
+      await expect(actionBtns.first()).toBeVisible();
     }
   });
 

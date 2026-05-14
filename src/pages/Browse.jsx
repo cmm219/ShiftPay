@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useWorkers, useOpenings } from '../hooks/useData';
+import { useSavedJobs } from '../hooks/useSavedJobs';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ROLE_LIST, ROLES, CITIES } from '../utils/constants';
 import { isActiveOpening } from '../utils/postingLifecycle';
+import { isSaveableLongTermOpening } from '../utils/savedJobs';
 
 // ─────────────────────────────────────────────────────────────
 // Inline SVG icons — kept local so the page has no extra deps
@@ -225,7 +227,7 @@ function WorkerBrowseCard({ worker }) {
 // ─────────────────────────────────────────────────────────────
 // Opening card — matches approved design
 // ─────────────────────────────────────────────────────────────
-function OpeningCard({ opening }) {
+function OpeningCard({ opening, savedJobs, onSaveClick }) {
   const {
     role,
     payRange,
@@ -239,6 +241,8 @@ function OpeningCard({ opening }) {
     expiryLabel,
     lifecycleStatus,
   } = opening;
+
+  const saved = savedJobs.isSaved(opening.id);
 
   return (
     <article className="flex flex-col rounded-xl border border-border-subtle bg-bg-surface p-5 transition-colors hover:border-border-strong">
@@ -292,12 +296,28 @@ function OpeningCard({ opening }) {
             </div>
           )}
         </div>
-        <Link
-          to={`/company/${restaurantId}`}
-          className="rounded-md border border-border-subtle bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-colors hover:border-border-strong hover:bg-bg-surface-hover"
-        >
-          View details
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          {!savedJobs.isHiringTeam && isSaveableLongTermOpening(opening) && (
+            <button
+              type="button"
+              onClick={() => onSaveClick(opening)}
+              className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                saved
+                  ? 'border-success/35 bg-success-soft text-success'
+                  : 'border-border-subtle bg-transparent text-text-primary hover:border-border-strong hover:bg-bg-surface-hover'
+              }`}
+              aria-label={saved ? `Unsave ${restaurantName} ${role} job` : `Save ${restaurantName} ${role} job`}
+            >
+              {saved ? 'Saved' : 'Save job'}
+            </button>
+          )}
+          <Link
+            to={`/company/${restaurantId}`}
+            className="rounded-md border border-border-subtle bg-transparent px-3 py-1.5 text-xs font-semibold text-text-primary transition-colors hover:border-border-strong hover:bg-bg-surface-hover"
+          >
+            Details
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -483,6 +503,9 @@ function FilterRail({
 export default function Browse() {
   const { workers, loading: workersLoading } = useWorkers();
   const { openings, loading: openingsLoading } = useOpenings();
+  const savedJobs = useSavedJobs();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeTab, setActiveTab] = useState('workers');
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
@@ -604,6 +627,22 @@ export default function Browse() {
     } else {
       setOpeningFilters({ ...DEFAULT_OPENING_FILTERS });
     }
+  };
+
+  const handleSaveJob = (opening) => {
+    if (savedJobs.canSaveJobs) {
+      if (!isSaveableLongTermOpening(opening)) return;
+      savedJobs.toggle(opening.id);
+      return;
+    }
+
+    if (savedJobs.isHiringTeam) return;
+
+    const params = new URLSearchParams({
+      saveJob: String(opening.id),
+      returnTo: `${location.pathname}${location.search}`,
+    });
+    navigate(`/login?${params.toString()}`);
   };
 
   const loading = activeTab === 'workers' ? workersLoading : openingsLoading;
@@ -835,7 +874,11 @@ export default function Browse() {
                   className="animate-fade-in"
                   style={{ animationDelay: `${index * 0.04}s`, opacity: 0 }}
                 >
-                  <OpeningCard opening={opening} />
+                  <OpeningCard
+                    opening={opening}
+                    savedJobs={savedJobs}
+                    onSaveClick={handleSaveJob}
+                  />
                 </div>
               ))}
             </div>

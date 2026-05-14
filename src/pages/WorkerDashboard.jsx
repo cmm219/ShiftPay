@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useShifts, useWorkers } from '../hooks/useData';
+import { useOpenings, useShifts, useWorkers } from '../hooks/useData';
+import { useSavedJobs } from '../hooks/useSavedJobs';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { isActiveOpening } from '../utils/postingLifecycle';
+import { getSavedJobReminder, isSaveableLongTermOpening } from '../utils/savedJobs';
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -238,6 +241,79 @@ function EmptySection({ icon, message, cta, to }) {
   );
 }
 
+function SavedJobCard({ opening, reminder, unavailable, onRemove, onDismissReminder }) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-bg-surface p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge type="role" value={opening.role} />
+            {opening.lifecycleStatus === 'expiring_soon' && (
+              <span className="rounded-full bg-warning-soft px-3 py-1 text-xs font-semibold text-warning">
+                Expiring soon
+              </span>
+            )}
+            {unavailable && (
+              <span className="rounded-full bg-danger-soft px-3 py-1 text-xs font-semibold text-danger">
+                No longer active
+              </span>
+            )}
+          </div>
+          <h3 className="mt-3 text-base font-semibold text-text-primary">
+            {opening.restaurantName}
+          </h3>
+          <p className="mt-1 text-sm text-text-secondary">
+            {opening.restaurantCity} &middot; {opening.payRange}
+          </p>
+          {opening.expiryLabel && (
+            <p className="mt-1 font-mono text-xs text-text-muted">
+              {opening.expiryLabel}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {!unavailable && (
+            <Link to={`/company/${opening.restaurantId}`}>
+              <Button variant="secondary" size="sm" className="min-h-[44px]">
+                View job
+              </Button>
+            </Link>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-[44px]"
+            onClick={() => onRemove(opening.id)}
+          >
+            Remove
+          </Button>
+        </div>
+      </div>
+
+      {reminder && (
+        <div className="mt-4 rounded-lg border border-warning/25 bg-warning-soft p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-warning">{reminder.label}</p>
+              <p className="mt-1 text-sm text-text-secondary">{reminder.body}</p>
+              <p className="mt-1 font-mono text-[10px] tracking-wide text-text-muted uppercase">
+                In-app saved-job reminder only
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onDismissReminder(reminder.key)}
+              className="rounded-md border border-warning/35 px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-bg-surface"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ────────────────────────────────────────────────────────────
 // Main Component
 // ────────────────────────────────────────────────────────────
@@ -246,6 +322,8 @@ export default function WorkerDashboard() {
   const { user, profile } = useAuth();
   const { shifts, loading: shiftsLoading } = useShifts();
   const { workers, loading: workersLoading } = useWorkers();
+  const { openings, loading: openingsLoading } = useOpenings();
+  const savedJobs = useSavedJobs();
 
   // Find current worker record by matching auth user ID or profile
   const currentWorker = useMemo(() => {
@@ -289,7 +367,32 @@ export default function WorkerDashboard() {
   // Reviews from worker data
   const reviews = currentWorker?.reviews || [];
 
-  const loading = shiftsLoading || workersLoading;
+  const savedOpenings = useMemo(() => {
+    if (!savedJobs.state.savedOpeningIds.length) return [];
+    return savedJobs.state.savedOpeningIds
+      .map((id) => openings.find((opening) => String(opening.id) === String(id)))
+      .filter(isSaveableLongTermOpening);
+  }, [openings, savedJobs.state.savedOpeningIds]);
+
+  const savedJobGroups = useMemo(() => {
+    const active = [];
+    const expiring = [];
+    const unavailable = [];
+
+    savedOpenings.forEach((opening) => {
+      if (!isActiveOpening(opening)) {
+        unavailable.push(opening);
+      } else if (opening.lifecycleStatus === 'expiring_soon') {
+        expiring.push(opening);
+      } else {
+        active.push(opening);
+      }
+    });
+
+    return { active, expiring, unavailable };
+  }, [savedOpenings]);
+
+  const loading = shiftsLoading || workersLoading || openingsLoading;
 
   if (loading) {
     return <LoadingSpinner message="Loading your dashboard..." />;
@@ -403,6 +506,57 @@ export default function WorkerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Left column: Shifts (2/3 width) */}
           <div className="md:col-span-2 space-y-8">
+            {/* Saved Jobs */}
+            <section>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-text-primary">
+                    Saved Jobs
+                  </h2>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Track long-term jobs you want to revisit. Saved-job reminders stay in-app for this demo.
+                  </p>
+                </div>
+                <Link to="/browse">
+                  <Button variant="secondary" size="sm" className="min-h-[44px]">
+                    Browse Jobs
+                  </Button>
+                </Link>
+              </div>
+
+              {savedOpenings.length > 0 ? (
+                <div className="space-y-3" aria-live="polite">
+                  {[
+                    ...savedJobGroups.expiring,
+                    ...savedJobGroups.active,
+                    ...savedJobGroups.unavailable,
+                  ].map((opening) => {
+                    const reminder = getSavedJobReminder(opening);
+                    const hiddenReminder = reminder && savedJobs.dismissedReminderKeys.has(reminder.key);
+                    return (
+                      <SavedJobCard
+                        key={opening.id}
+                        opening={opening}
+                        reminder={hiddenReminder ? null : reminder}
+                        unavailable={!isActiveOpening(opening)}
+                        onRemove={savedJobs.unsave}
+                        onDismissReminder={savedJobs.dismissReminder}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-bg-surface rounded-xl border border-border-subtle">
+                  <EmptySection
+                    icon="&#128278;"
+                    message="No saved jobs yet. Browse jobs to keep track of roles you want to revisit."
+                    cta="Browse Jobs"
+                    to="/browse"
+                  />
+                </div>
+              )}
+            </section>
+
             {/* Upcoming Shifts */}
             <section>
               <h2 className="font-display text-xl font-semibold text-text-primary mb-4">

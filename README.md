@@ -16,7 +16,7 @@ The app is built for fast GitHub review: React 19, Vite 7, Tailwind CSS 4, React
 
 1. Run the app and open `http://localhost:3000`.
 2. Use `Login -> Demo hiring team` to review active jobs, local reminder states, renew, close, and repost flows.
-3. Use `Login -> Demo worker` to review the worker dashboard.
+3. Use `Login -> Demo worker` to review the worker dashboard and saved long-term jobs.
 4. Open `/browse` to switch between worker discovery and open jobs, or use `/swipe` for the card-style worker discovery view.
 
 The local demo does not create real accounts, send messages, process payments, or contact workers.
@@ -25,7 +25,7 @@ The local demo does not create real accounts, send messages, process payments, o
 
 - Jobs-first marketplace browse experience with worker and job tabs.
 - Hiring-team dashboard for long-term jobs, event shifts, posting states, and repost flows.
-- Worker dashboard with profile completeness, reliability, upcoming work, and review history.
+- Worker dashboard with saved long-term jobs, profile completeness, reliability, upcoming work, and review history.
 - Multi-step onboarding for workers and hiring teams with local form persistence.
 - API adapter pattern that lets public read flows fall back to seeded data when Supabase is not configured.
 - Responsive Tailwind CSS 4 interface with design tokens in `src/index.css`.
